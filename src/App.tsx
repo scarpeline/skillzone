@@ -4,6 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Games from "./pages/Games";
+import Tournaments from "./pages/Tournaments";
+import Rankings from "./pages/Rankings";
+import Wallet from "./pages/Wallet";
+import Profile from "./pages/Profile";
+import HallOfFame from "./pages/HallOfFame";
+import Affiliates from "./pages/Affiliates";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -16,6 +24,15 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/games" element={<Games />} />
+          <Route path="/tournaments" element={<Tournaments />} />
+          <Route path="/rankings" element={<Rankings />} />
+          <Route path="/wallet" element={<Wallet />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/hall-of-fame" element={<HallOfFame />} />
+          <Route path="/affiliates" element={<Affiliates />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Login />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
