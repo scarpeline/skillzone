@@ -19,6 +19,7 @@ const navItems = [
   { path: "/tournaments", label: "Torneios", icon: Trophy },
   { path: "/rankings", label: "Rankings", icon: BarChart3 },
   { path: "/hall-of-fame", label: "Hall da Fama", icon: Star },
+  { path: "/records", label: "Recordes", icon: Trophy },
   { path: "/affiliates", label: "Afiliados", icon: Users },
 ];
 

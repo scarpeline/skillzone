@@ -163,13 +163,13 @@ const Tournaments = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 md:mb-8">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-display text-4xl md:text-5xl font-bold mb-4"
+            className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4"
           >
             <span className="text-gradient-gold">Torneios</span> Competitivos
           </motion.h1>
@@ -177,7 +177,7 @@ const Tournaments = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-muted-foreground text-lg"
+            className="text-muted-foreground text-base md:text-lg"
           >
             Participe de torneios e dispute prêmios reais
           </motion.p>
@@ -188,10 +188,10 @@ const Tournaments = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="flex flex-col md:flex-row gap-4 mb-8"
+          className="flex flex-col sm:flex-row gap-3 mb-6 md:mb-8"
         >
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
             <Input
               placeholder="Buscar torneios..."
               value={searchTerm}
@@ -200,7 +200,7 @@ const Tournaments = () => {
             />
           </div>
           <Select value={gameFilter} onValueChange={setGameFilter}>
-            <SelectTrigger className="w-full md:w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Filtrar por jogo" />
             </SelectTrigger>
@@ -218,12 +218,12 @@ const Tournaments = () => {
 
         {/* Featured Tournaments */}
         {featuredTournaments.length > 0 && (
-          <div className="mb-12">
-            <h2 className="font-display text-xl font-bold mb-4 flex items-center gap-2">
+          <div className="mb-8 md:mb-12">
+            <h2 className="font-display text-lg md:text-xl font-bold mb-4 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-accent" />
-              Torneios em Destaque
+              Em Destaque
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               {featuredTournaments.map((tournament, index) => (
                 <motion.div
                   key={tournament.id}
@@ -231,27 +231,27 @@ const Tournaments = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * index }}
                 >
-                  <div className="relative bg-gradient-to-br from-accent/10 to-accent/5 rounded-2xl border border-accent/30 p-6 hover:border-accent/50 transition-all">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl" />
+                  <div className="relative bg-gradient-to-br from-accent/10 to-accent/5 rounded-xl md:rounded-2xl border border-accent/30 p-4 md:p-6 hover:border-accent/50 transition-all">
+                    <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-accent/10 rounded-full blur-3xl" />
 
                     <div className="relative z-10">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center text-2xl">
+                      <div className="flex items-center gap-3 mb-3 md:mb-4">
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-accent/20 flex items-center justify-center text-xl md:text-2xl">
                           {tournament.gameIcon}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
                             {getStatusBadge(tournament.status)}
-                            <Badge variant="outline">{tournament.type}</Badge>
+                            <Badge variant="outline" className="text-xs">{tournament.type}</Badge>
                           </div>
                           <span className="text-sm text-muted-foreground">{tournament.game}</span>
                         </div>
                       </div>
 
-                      <h3 className="font-display text-xl font-bold mb-2">{tournament.name}</h3>
+                      <h3 className="font-display text-lg md:text-xl font-bold mb-2 truncate">{tournament.name}</h3>
 
                       {/* Prize Pool Progress */}
-                      <div className="mb-4">
+                      <div className="mb-3 md:mb-4">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="text-muted-foreground">Pool do Prêmio</span>
                           <span className="font-display font-bold text-gradient-gold">
@@ -269,17 +269,17 @@ const Tournaments = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 mb-4 text-sm">
+                      <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-4 text-xs md:text-sm">
                         <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4 text-muted-foreground" />
+                          <Users className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
                           <span>{tournament.players}/{tournament.maxPlayers}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
+                          <Calendar className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
                           <span>{formatDateTime(tournament.startTime)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <DollarSign className="w-4 h-4 text-muted-foreground" />
+                          <DollarSign className="w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
                           <span>{formatCurrency(tournament.entryFee)}</span>
                         </div>
                       </div>
@@ -297,8 +297,8 @@ const Tournaments = () => {
 
         {/* Regular Tournaments */}
         <div>
-          <h2 className="font-display text-xl font-bold mb-4">Todos os Torneios</h2>
-          <div className="space-y-4">
+          <h2 className="font-display text-lg md:text-xl font-bold mb-4">Todos os Torneios</h2>
+          <div className="space-y-3 md:space-y-4">
             {regularTournaments.map((tournament, index) => (
               <motion.div
                 key={tournament.id}
@@ -307,45 +307,48 @@ const Tournaments = () => {
                 transition={{ delay: 0.05 * index }}
               >
                 <div className="bg-card rounded-xl border border-border p-4 md:p-6 hover:border-primary/50 transition-all">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl">
+                  <div className="flex flex-col gap-4">
+                    {/* Top Row */}
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-muted flex items-center justify-center text-xl md:text-2xl flex-shrink-0">
                         {tournament.gameIcon}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           {getStatusBadge(tournament.status)}
-                          <span className="text-sm text-muted-foreground">{tournament.game}</span>
+                          <span className="text-xs md:text-sm text-muted-foreground">{tournament.game}</span>
                         </div>
-                        <h3 className="font-display text-lg font-bold">{tournament.name}</h3>
+                        <h3 className="font-display text-base md:text-lg font-bold truncate">{tournament.name}</h3>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 md:gap-8">
-                      <div className="text-center">
-                        <div className="font-display text-xl font-bold text-gradient-gold">
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      <div>
+                        <div className="font-display text-sm md:text-xl font-bold text-gradient-gold">
                           {formatCurrency(tournament.currentPool)}
                         </div>
-                        <div className="text-xs text-muted-foreground">Premiação</div>
+                        <div className="text-[10px] md:text-xs text-muted-foreground">Prêmio</div>
                       </div>
-                      <div className="text-center">
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          <span className="font-semibold">{tournament.players}/{tournament.maxPlayers}</span>
+                      <div>
+                        <div className="flex items-center justify-center gap-1">
+                          <Users className="w-3 h-3 md:w-4 md:h-4" />
+                          <span className="font-semibold text-xs md:text-sm">{tournament.players}/{tournament.maxPlayers}</span>
                         </div>
-                        <div className="text-xs text-muted-foreground">Jogadores</div>
+                        <div className="text-[10px] md:text-xs text-muted-foreground">Jogadores</div>
                       </div>
-                      <div className="text-center">
-                        <div className="font-semibold">{formatDateTime(tournament.startTime)}</div>
-                        <div className="text-xs text-muted-foreground">Início</div>
+                      <div>
+                        <div className="font-semibold text-xs md:text-sm">{formatDateTime(tournament.startTime)}</div>
+                        <div className="text-[10px] md:text-xs text-muted-foreground">Início</div>
                       </div>
-                      <div className="text-center">
-                        <div className="font-semibold">{formatCurrency(tournament.entryFee)}</div>
-                        <div className="text-xs text-muted-foreground">Inscrição</div>
+                      <div>
+                        <div className="font-semibold text-xs md:text-sm">{formatCurrency(tournament.entryFee)}</div>
+                        <div className="text-[10px] md:text-xs text-muted-foreground">Inscrição</div>
                       </div>
                     </div>
 
-                    <Button variant="hero">Participar</Button>
+                    {/* Button */}
+                    <Button variant="hero" className="w-full">Participar</Button>
                   </div>
                 </div>
               </motion.div>
