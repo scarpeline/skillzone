@@ -12,6 +12,8 @@ import Profile from "./pages/Profile";
 import HallOfFame from "./pages/HallOfFame";
 import Affiliates from "./pages/Affiliates";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import Records from "./pages/Records";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,14 +27,19 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/games" element={<Games />} />
+          <Route path="/games/:gameId" element={<Games />} />
+          <Route path="/games/:gameId/play" element={<Games />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/rankings" element={<Rankings />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/player/:username" element={<Profile />} />
           <Route path="/hall-of-fame" element={<HallOfFame />} />
           <Route path="/affiliates" element={<Affiliates />} />
+          <Route path="/records" element={<Records />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

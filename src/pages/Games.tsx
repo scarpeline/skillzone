@@ -115,13 +115,13 @@ const games = [
 const Games = () => {
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 md:mb-12">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-display text-4xl md:text-5xl font-bold mb-4"
+            className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4"
           >
             Escolha Seu <span className="text-gradient-neon">Jogo</span>
           </motion.h1>
@@ -129,14 +129,14 @@ const Games = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-muted-foreground text-lg max-w-2xl mx-auto"
+            className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto"
           >
             Todos os nossos jogos são 100% baseados em habilidade. Sem sorte, apenas estratégia.
           </motion.p>
         </div>
 
         {/* Games Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6">
           {games.map((game, index) => (
             <motion.div
               key={game.id}
@@ -144,58 +144,57 @@ const Games = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <div className="group relative bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_hsl(var(--primary)/0.2)]">
+              <div className="group relative bg-card rounded-xl md:rounded-2xl border border-border overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_hsl(var(--primary)/0.2)]">
                 {/* Header with gradient */}
-                <div className={`h-24 bg-gradient-to-r ${game.gradient} relative overflow-hidden`}>
+                <div className={`h-16 md:h-24 bg-gradient-to-r ${game.gradient} relative overflow-hidden`}>
                   <div className="absolute inset-0 bg-grid-pattern bg-[size:20px_20px] opacity-20" />
-                  <div className="absolute top-4 left-4 text-5xl opacity-80">{game.icon}</div>
+                  <div className="absolute top-2 md:top-4 left-3 md:left-4 text-3xl md:text-5xl opacity-80">{game.icon}</div>
                   {game.activeTournaments > 0 && (
-                    <Badge className="absolute top-4 right-4 bg-background/90 text-foreground">
+                    <Badge className="absolute top-2 md:top-4 right-2 md:right-4 bg-background/90 text-foreground text-xs">
                       <Trophy className="w-3 h-3 mr-1" />
-                      {game.activeTournaments} torneios ativos
+                      {game.activeTournaments} ativos
                     </Badge>
                   )}
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-display text-2xl font-bold group-hover:text-primary transition-colors">
+                <div className="p-4 md:p-6">
+                  <div className="flex items-start justify-between mb-2 md:mb-3">
+                    <h3 className="font-display text-xl md:text-2xl font-bold group-hover:text-primary transition-colors">
                       {game.name}
                     </h3>
                     <div className="flex items-center gap-1 text-accent">
                       <Star className="w-4 h-4 fill-current" />
-                      <span className="font-semibold">{game.rating}</span>
+                      <span className="font-semibold text-sm">{game.rating}</span>
                     </div>
                   </div>
 
-                  <p className="text-muted-foreground mb-4">{game.description}</p>
+                  <p className="text-muted-foreground text-sm mb-3 md:mb-4 line-clamp-2">{game.description}</p>
 
                   {/* Stats */}
-                  <div className="flex flex-wrap gap-4 mb-6 text-sm">
+                  <div className="flex flex-wrap gap-2 md:gap-4 mb-4 md:mb-6 text-xs md:text-sm">
                     <div className="flex items-center gap-1 text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>{game.players} jogadores</span>
+                      <Users className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>{game.players}</span>
                     </div>
                     <div className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="w-4 h-4" />
+                      <Clock className="w-3 h-3 md:w-4 md:h-4" />
                       <span>{game.avgGameTime}</span>
                     </div>
-                    <Badge variant="outline">{game.difficulty}</Badge>
+                    <Badge variant="outline" className="text-xs">{game.difficulty}</Badge>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 md:gap-3">
                     <Link to={`/games/${game.id}/play`} className="flex-1">
-                      <Button variant="hero" className="w-full">
+                      <Button variant="hero" className="w-full text-sm">
                         <Play className="w-4 h-4" />
                         Jogar
                       </Button>
                     </Link>
                     <Link to={`/tournaments?game=${game.id}`}>
-                      <Button variant="outline">
+                      <Button variant="outline" size="icon" className="w-10 h-10">
                         <Trophy className="w-4 h-4" />
-                        Torneios
                       </Button>
                     </Link>
                   </div>

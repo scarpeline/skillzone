@@ -64,13 +64,13 @@ const Wallet = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 md:mb-8">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-display text-4xl md:text-5xl font-bold mb-4"
+            className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4"
           >
             Sua <span className="text-gradient-neon">Carteira</span>
           </motion.h1>
@@ -78,7 +78,7 @@ const Wallet = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-muted-foreground text-lg"
+            className="text-muted-foreground text-base md:text-lg"
           >
             Gerencie seu dinheiro e créditos
           </motion.p>
@@ -89,24 +89,24 @@ const Wallet = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8"
         >
           {/* Cash Wallet */}
           <Card className="bg-gradient-to-br from-success/10 to-success/5 border-success/30">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base font-normal text-muted-foreground">
-                <WalletIcon className="w-5 h-5 text-success" />
+              <CardTitle className="flex items-center gap-2 text-sm md:text-base font-normal text-muted-foreground">
+                <WalletIcon className="w-4 h-4 md:w-5 md:h-5 text-success" />
                 Dinheiro (Sacável)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-4xl font-bold text-success mb-4">
+              <div className="font-display text-3xl md:text-4xl font-bold text-success mb-3 md:mb-4">
                 {formatCurrency(cashBalance)}
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
                 Prêmios de torneios. Pode ser sacado via PIX.
               </p>
-              <Button variant="outline" className="border-success text-success hover:bg-success/10">
+              <Button variant="outline" className="border-success text-success hover:bg-success/10 text-sm">
                 <QrCode className="w-4 h-4" />
                 Sacar via PIX
               </Button>
@@ -116,19 +116,19 @@ const Wallet = () => {
           {/* Credits Wallet */}
           <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base font-normal text-muted-foreground">
-                <Coins className="w-5 h-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-sm md:text-base font-normal text-muted-foreground">
+                <Coins className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                 Créditos (Não Sacável)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-4xl font-bold text-primary mb-4">
+              <div className="font-display text-3xl md:text-4xl font-bold text-primary mb-3 md:mb-4">
                 {creditsBalance} créditos
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
                 Use para jogar, entrar em torneios ou doar.
               </p>
-              <Button variant="hero">
+              <Button variant="hero" className="text-sm">
                 <Plus className="w-4 h-4" />
                 Comprar Créditos
               </Button>
@@ -138,48 +138,48 @@ const Wallet = () => {
 
         {/* Actions & Transactions */}
         <Tabs defaultValue="history" className="w-full">
-          <TabsList className="w-full max-w-md mb-6 grid grid-cols-3">
-            <TabsTrigger value="history">Histórico</TabsTrigger>
-            <TabsTrigger value="buy">Comprar</TabsTrigger>
-            <TabsTrigger value="withdraw">Sacar</TabsTrigger>
+          <TabsList className="w-full max-w-md mb-4 md:mb-6 grid grid-cols-3 h-auto">
+            <TabsTrigger value="history" className="text-xs md:text-sm py-2">Histórico</TabsTrigger>
+            <TabsTrigger value="buy" className="text-xs md:text-sm py-2">Comprar</TabsTrigger>
+            <TabsTrigger value="withdraw" className="text-xs md:text-sm py-2">Sacar</TabsTrigger>
           </TabsList>
 
           <TabsContent value="history">
             <Card>
               <CardHeader>
-                <CardTitle>Histórico de Transações</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Histórico de Transações</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {transactions.map((tx, index) => (
                     <motion.div
                       key={tx.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="flex items-center justify-between py-3 border-b border-border last:border-0"
+                      className="flex items-center justify-between py-2 md:py-3 border-b border-border last:border-0"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                           {getTransactionIcon(tx.type)}
                         </div>
-                        <div>
-                          <p className="font-medium">{tx.description}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm md:text-base truncate">{tx.description}</p>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">{tx.date}</span>
-                            <Badge variant="outline" className="text-xs">
+                            <span className="text-xs md:text-sm text-muted-foreground">{tx.date}</span>
+                            <Badge variant="outline" className="text-[10px] md:text-xs">
                               {tx.wallet === "cash" ? "Dinheiro" : "Créditos"}
                             </Badge>
                           </div>
                         </div>
                       </div>
                       <span
-                        className={`font-display font-bold ${
+                        className={`font-display font-bold text-sm md:text-base flex-shrink-0 ml-2 ${
                           tx.amount > 0 ? "text-success" : "text-destructive"
                         }`}
                       >
                         {tx.amount > 0 ? "+" : ""}
-                        {tx.wallet === "cash" ? formatCurrency(tx.amount) : `${tx.amount} créditos`}
+                        {tx.wallet === "cash" ? formatCurrency(tx.amount) : `${tx.amount} cr`}
                       </span>
                     </motion.div>
                   ))}
@@ -191,26 +191,26 @@ const Wallet = () => {
           <TabsContent value="buy">
             <Card>
               <CardHeader>
-                <CardTitle>Comprar Créditos</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Comprar Créditos</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-4 md:space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                     {[50, 100, 200, 500].map((amount) => (
                       <Button
                         key={amount}
                         variant={buyAmount === String(amount) ? "default" : "outline"}
-                        className="h-20 flex-col"
+                        className="h-16 md:h-20 flex-col"
                         onClick={() => setBuyAmount(String(amount))}
                       >
-                        <span className="font-display text-xl font-bold">{amount}</span>
-                        <span className="text-xs text-muted-foreground">créditos</span>
+                        <span className="font-display text-lg md:text-xl font-bold">{amount}</span>
+                        <span className="text-[10px] md:text-xs text-muted-foreground">créditos</span>
                       </Button>
                     ))}
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Ou digite um valor personalizado</Label>
+                    <Label className="text-sm">Ou digite um valor personalizado</Label>
                     <Input
                       type="number"
                       placeholder="Digite a quantidade de créditos"
@@ -219,7 +219,7 @@ const Wallet = () => {
                     />
                   </div>
 
-                  <div className="p-4 bg-muted rounded-lg">
+                  <div className="p-3 md:p-4 bg-muted rounded-lg text-sm">
                     <div className="flex justify-between mb-2">
                       <span>Créditos</span>
                       <span>{buyAmount || 0}</span>
@@ -247,27 +247,27 @@ const Wallet = () => {
           <TabsContent value="withdraw">
             <Card>
               <CardHeader>
-                <CardTitle>Sacar via PIX</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Sacar via PIX</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div className="p-4 bg-success/10 border border-success/30 rounded-lg">
+                <div className="space-y-4 md:space-y-6">
+                  <div className="p-3 md:p-4 bg-success/10 border border-success/30 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
-                      <WalletIcon className="w-5 h-5 text-success" />
-                      <span className="font-semibold">Saldo disponível</span>
+                      <WalletIcon className="w-4 h-4 md:w-5 md:h-5 text-success" />
+                      <span className="font-semibold text-sm md:text-base">Saldo disponível</span>
                     </div>
-                    <p className="font-display text-2xl font-bold text-success">
+                    <p className="font-display text-xl md:text-2xl font-bold text-success">
                       {formatCurrency(cashBalance)}
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Chave PIX</Label>
+                    <Label className="text-sm">Chave PIX</Label>
                     <Input placeholder="Digite sua chave PIX" />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Valor do saque</Label>
+                    <Label className="text-sm">Valor do saque</Label>
                     <Input
                       type="number"
                       placeholder="Digite o valor"
@@ -277,7 +277,7 @@ const Wallet = () => {
                     />
                   </div>
 
-                  <div className="p-4 bg-muted rounded-lg">
+                  <div className="p-3 md:p-4 bg-muted rounded-lg text-sm">
                     <div className="flex justify-between mb-2">
                       <span>Valor do saque</span>
                       <span>{formatCurrency(Number(withdrawAmount) || 0)}</span>
