@@ -12,14 +12,17 @@ import {
   X,
   Users,
   Star,
+  Target,
+  Crown,
+  Shield,
 } from "lucide-react";
 
 const navItems = [
   { path: "/games", label: "Jogos", icon: Gamepad2 },
   { path: "/tournaments", label: "Torneios", icon: Trophy },
   { path: "/rankings", label: "Rankings", icon: BarChart3 },
-  { path: "/hall-of-fame", label: "Hall da Fama", icon: Star },
-  { path: "/records", label: "Recordes", icon: Trophy },
+  { path: "/missions", label: "Missões", icon: Target },
+  { path: "/vip", label: "VIP", icon: Crown },
   { path: "/affiliates", label: "Afiliados", icon: Users },
 ];
 

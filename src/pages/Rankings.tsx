@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VipBadge } from "@/components/gamification/VipBadge";
+import { VipLevel } from "@/lib/gamification";
 import { Link } from "react-router-dom";
 import {
   Trophy,
@@ -16,16 +18,16 @@ import {
 } from "lucide-react";
 
 const globalRankings = [
-  { rank: 1, name: "Carlos Silva", username: "carlosmaster", points: 15420, winRate: 78, earnings: 45230, verified: true, trend: 5, avatar: "CS" },
-  { rank: 2, name: "Maria Santos", username: "mariachess", points: 14890, winRate: 75, earnings: 38150, verified: true, trend: 2, avatar: "MS" },
-  { rank: 3, name: "João Pereira", username: "joaopro", points: 14320, winRate: 72, earnings: 32890, verified: false, trend: -1, avatar: "JP" },
-  { rank: 4, name: "Ana Costa", username: "anacosta", points: 13980, winRate: 71, earnings: 28450, verified: true, trend: 3, avatar: "AC" },
-  { rank: 5, name: "Pedro Lima", username: "pedrolima", points: 13540, winRate: 69, earnings: 24120, verified: false, trend: 0, avatar: "PL" },
-  { rank: 6, name: "Juliana Alves", username: "julialves", points: 13200, winRate: 68, earnings: 21890, verified: true, trend: -2, avatar: "JA" },
-  { rank: 7, name: "Ricardo Mendes", username: "ricardogm", points: 12850, winRate: 67, earnings: 19450, verified: false, trend: 4, avatar: "RM" },
-  { rank: 8, name: "Fernanda Oliveira", username: "fernandao", points: 12500, winRate: 66, earnings: 17230, verified: true, trend: 1, avatar: "FO" },
-  { rank: 9, name: "Bruno Souza", username: "brunosouza", points: 12150, winRate: 65, earnings: 15680, verified: false, trend: -3, avatar: "BS" },
-  { rank: 10, name: "Camila Rocha", username: "camilar", points: 11800, winRate: 64, earnings: 14120, verified: true, trend: 2, avatar: "CR" },
+  { rank: 1, name: "Carlos Silva", username: "carlosmaster", points: 15420, winRate: 78, earnings: 45230, verified: true, trend: 5, avatar: "CS", vipLevel: "elite" as VipLevel },
+  { rank: 2, name: "Maria Santos", username: "mariachess", points: 14890, winRate: 75, earnings: 38150, verified: true, trend: 2, avatar: "MS", vipLevel: "diamond" as VipLevel },
+  { rank: 3, name: "João Pereira", username: "joaopro", points: 14320, winRate: 72, earnings: 32890, verified: false, trend: -1, avatar: "JP", vipLevel: "gold" as VipLevel },
+  { rank: 4, name: "Ana Costa", username: "anacosta", points: 13980, winRate: 71, earnings: 28450, verified: true, trend: 3, avatar: "AC", vipLevel: "gold" as VipLevel },
+  { rank: 5, name: "Pedro Lima", username: "pedrolima", points: 13540, winRate: 69, earnings: 24120, verified: false, trend: 0, avatar: "PL", vipLevel: "silver" as VipLevel },
+  { rank: 6, name: "Juliana Alves", username: "julialves", points: 13200, winRate: 68, earnings: 21890, verified: true, trend: -2, avatar: "JA", vipLevel: "silver" as VipLevel },
+  { rank: 7, name: "Ricardo Mendes", username: "ricardogm", points: 12850, winRate: 67, earnings: 19450, verified: false, trend: 4, avatar: "RM", vipLevel: "silver" as VipLevel },
+  { rank: 8, name: "Fernanda Oliveira", username: "fernandao", points: 12500, winRate: 66, earnings: 17230, verified: true, trend: 1, avatar: "FO", vipLevel: "bronze" as VipLevel },
+  { rank: 9, name: "Bruno Souza", username: "brunosouza", points: 12150, winRate: 65, earnings: 15680, verified: false, trend: -3, avatar: "BS", vipLevel: "bronze" as VipLevel },
+  { rank: 10, name: "Camila Rocha", username: "camilar", points: 11800, winRate: 64, earnings: 14120, verified: true, trend: 2, avatar: "CR", vipLevel: "bronze" as VipLevel },
 ];
 
 function getRankIcon(rank: number) {
@@ -191,11 +193,12 @@ const Rankings = () => {
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1 md:gap-2">
+                        <div className="flex items-center gap-1 md:gap-2 flex-wrap">
                           <span className="font-semibold text-sm md:text-base truncate">{player.name}</span>
                           {player.verified && (
                             <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-primary flex-shrink-0" />
                           )}
+                          <VipBadge level={player.vipLevel} size="sm" showLabel={false} className="hidden sm:inline-flex" />
                         </div>
                         <span className="text-xs md:text-sm text-muted-foreground">@{player.username}</span>
                       </div>

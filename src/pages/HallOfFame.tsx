@@ -2,6 +2,8 @@ import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { VipBadge } from "@/components/gamification/VipBadge";
+import { VipLevel } from "@/lib/gamification";
 import { Link } from "react-router-dom";
 import { Trophy, Crown, Star, Medal, CheckCircle, Calendar, ArrowRight } from "lucide-react";
 
@@ -16,6 +18,7 @@ const legends = [
     inducted: "2025",
     game: "Xadrez",
     verified: true,
+    vipLevel: "elite" as VipLevel,
   },
   {
     name: "Maria Santos",
@@ -27,6 +30,7 @@ const legends = [
     inducted: "2025",
     game: "Xadrez",
     verified: true,
+    vipLevel: "elite" as VipLevel,
   },
   {
     name: "João Pereira",
@@ -38,6 +42,7 @@ const legends = [
     inducted: "2025",
     game: "Damas",
     verified: false,
+    vipLevel: "diamond" as VipLevel,
   },
   {
     name: "Ana Costa",
@@ -49,6 +54,7 @@ const legends = [
     inducted: "2025",
     game: "Quiz",
     verified: true,
+    vipLevel: "diamond" as VipLevel,
   },
 ];
 
@@ -142,12 +148,13 @@ const HallOfFame = () => {
                           )}
                         </div>
                         <p className="text-muted-foreground">@{legend.username}</p>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <Badge variant="outline">{legend.game}</Badge>
                           <Badge className="bg-amber-400/20 text-amber-400 border-amber-400/30">
                             <Calendar className="w-3 h-3 mr-1" />
                             {legend.inducted}
                           </Badge>
+                          <VipBadge level={legend.vipLevel} size="sm" />
                         </div>
                       </div>
                     </div>

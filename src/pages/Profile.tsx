@@ -5,6 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { VipBadge } from "@/components/gamification/VipBadge";
+import { XpProgressBar } from "@/components/gamification/XpProgressBar";
+import { CurrencyDisplay } from "@/components/gamification/CurrencyDisplay";
+import { AchievementCard } from "@/components/gamification/AchievementCard";
+import { StreakDisplay } from "@/components/gamification/StreakDisplay";
+import { DEFAULT_ACHIEVEMENTS, PlayerCurrency } from "@/lib/gamification";
 import {
   CheckCircle,
   Trophy,
@@ -17,6 +23,8 @@ import {
   Settings,
   Twitch,
   Youtube,
+  Flame,
+  Bell,
 } from "lucide-react";
 import {
   LineChart,
@@ -27,6 +35,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { Link } from "react-router-dom";
 
 const performanceData = [
   { month: "Set", ranking: 450, earnings: 1200 },
@@ -52,6 +61,20 @@ const recentMatches = [
   { game: "Xadrez", opponent: "@anacosta", result: "win", rating: "+18", date: "Ontem" },
   { game: "Sudoku", opponent: "Torneio", result: "win", rating: "+25", date: "22 Jan" },
 ];
+
+// Mock player gamification data
+const playerCurrency: PlayerCurrency = { xp: 2450, tokens: 180, tickets: 3 };
+const playerXp = 2450;
+const playerVipLevel = "gold" as const;
+const currentStreak = 12;
+const longestStreak = 23;
+
+const playerAchievements = DEFAULT_ACHIEVEMENTS.slice(0, 6).map((a, i) => ({
+  ...a,
+  progress: i < 4 ? a.requirement : Math.floor(a.requirement * 0.6),
+  completed: i < 4,
+  unlockedAt: i < 4 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
+}));
 
 const Profile = () => {
   return (
@@ -81,6 +104,7 @@ const Profile = () => {
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <h1 className="font-display text-2xl md:text-3xl font-bold">Carlos Silva</h1>
                   <CheckCircle className="w-6 h-6 text-primary" />
+                  <VipBadge level={playerVipLevel} size="md" />
                   <Badge className="bg-accent/20 text-accent border-accent/30">Top 10</Badge>
                 </div>
                 <p className="text-muted-foreground mb-2">@carlosmaster</p>
@@ -88,10 +112,18 @@ const Profile = () => {
                   Jogador profissional de xadrez e estratégia. Campeão nacional 2025. 
                   Streaming ao vivo às terças e quintas.
                 </p>
+                <div className="mt-2">
+                  <CurrencyDisplay currency={playerCurrency} size="sm" />
+                </div>
               </div>
 
               {/* Actions */}
               <div className="flex gap-2">
+                <Link to="/notifications">
+                  <Button variant="outline" size="icon">
+                    <Bell className="w-4 h-4" />
+                  </Button>
+                </Link>
                 <Button variant="outline" size="icon">
                   <Share2 className="w-4 h-4" />
                 </Button>
@@ -116,18 +148,18 @@ const Profile = () => {
           </div>
         </motion.div>
 
-        {/* Stats Cards */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"
         >
           {[
             { icon: Trophy, label: "Torneios Vencidos", value: "47", color: "text-accent" },
             { icon: Target, label: "Taxa de Vitória", value: "78%", color: "text-success" },
             { icon: TrendingUp, label: "Ranking Global", value: "#1", color: "text-primary" },
             { icon: Star, label: "Total Ganho", value: "R$ 45.230", color: "text-gradient-gold" },
+            { icon: Flame, label: "Sequência", value: `${currentStreak} dias`, color: "text-orange-500" },
           ].map((stat, index) => {
             const Icon = stat.icon;
             return (
@@ -144,12 +176,26 @@ const Profile = () => {
           })}
         </motion.div>
 
-        {/* Tabs Content */}
+        {/* XP Progress */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-8"
+        >
+          <Card>
+            <CardContent className="pt-6">
+              <XpProgressBar xp={playerXp} size="lg" />
+            </CardContent>
+          </Card>
+        </motion.div>
+
         <Tabs defaultValue="performance" className="w-full">
-          <TabsList className="w-full max-w-xl mb-6 grid grid-cols-4">
+          <TabsList className="w-full max-w-2xl mb-6 grid grid-cols-5">
             <TabsTrigger value="performance">Desempenho</TabsTrigger>
             <TabsTrigger value="matches">Partidas</TabsTrigger>
             <TabsTrigger value="achievements">Conquistas</TabsTrigger>
+            <TabsTrigger value="streak">Sequência</TabsTrigger>
             <TabsTrigger value="stats">Estatísticas</TabsTrigger>
           </TabsList>
 
@@ -259,33 +305,26 @@ const Profile = () => {
 
           <TabsContent value="achievements">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {achievements.map((achievement, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card className={achievement.completed ? "" : "opacity-50"}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center gap-4">
-                        <div className="text-4xl">{achievement.icon}</div>
-                        <div>
-                          <h4 className="font-display font-bold">{achievement.name}</h4>
-                          <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                          {achievement.completed && (
-                            <Badge className="mt-2 bg-success/20 text-success border-success/30">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Conquistado
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+              {playerAchievements.map((achievement) => (
+                <AchievementCard 
+                  key={achievement.id} 
+                  achievement={achievement}
+                />
               ))}
             </div>
+            <div className="text-center mt-6">
+              <Link to="/missions">
+                <Button variant="outline">Ver Todas as Conquistas</Button>
+              </Link>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="streak">
+            <StreakDisplay 
+              currentStreak={currentStreak}
+              longestStreak={longestStreak}
+              todayPlayed={true}
+            />
           </TabsContent>
 
           <TabsContent value="stats">
