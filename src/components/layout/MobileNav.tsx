@@ -1,11 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Gamepad2, Trophy, BarChart3, Wallet, User } from "lucide-react";
+import { Gamepad2, Trophy, Target, Wallet, User } from "lucide-react";
 
 const navItems = [
   { path: "/games", label: "Jogos", icon: Gamepad2 },
   { path: "/tournaments", label: "Torneios", icon: Trophy },
-  { path: "/rankings", label: "Ranking", icon: BarChart3 },
+  { path: "/missions", label: "Missões", icon: Target },
   { path: "/wallet", label: "Carteira", icon: Wallet },
   { path: "/profile", label: "Perfil", icon: User },
 ];

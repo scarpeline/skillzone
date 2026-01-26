@@ -15,6 +15,12 @@ import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import Records from "./pages/Records";
 import NotFound from "./pages/NotFound";
+import Missions from "./pages/Missions";
+import VipDashboard from "./pages/VipDashboard";
+import NotificationSettings from "./pages/NotificationSettings";
+import AdminDashboard from "./pages/AdminDashboard";
+import Onboarding from "./pages/Onboarding";
+import Campaigns from "./pages/Campaigns";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +43,12 @@ const App = () => (
           <Route path="/hall-of-fame" element={<HallOfFame />} />
           <Route path="/affiliates" element={<Affiliates />} />
           <Route path="/records" element={<Records />} />
+          <Route path="/missions" element={<Missions />} />
+          <Route path="/vip" element={<VipDashboard />} />
+          <Route path="/notifications" element={<NotificationSettings />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

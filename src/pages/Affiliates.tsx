@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { AffiliateLevelBadge } from "@/components/gamification/AffiliateLevelBadge";
+import { AFFILIATE_LEVELS, getAffiliateLevel, AffiliateLevel } from "@/lib/gamification";
 import {
   Users,
   Link as LinkIcon,
@@ -15,6 +17,8 @@ import {
   ArrowRight,
   CheckCircle,
   Star,
+  Zap,
+  Gift,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -24,7 +28,12 @@ const affiliateStats = {
   totalEarnings: 3450,
   pendingWithdraw: 890,
   thisMonth: 450,
+  totalVolume: 12500,
 };
+
+// Calculate affiliate level
+const currentAffiliateLevel = getAffiliateLevel(affiliateStats.level1Referrals, affiliateStats.totalVolume);
+const currentLevelInfo = AFFILIATE_LEVELS[currentAffiliateLevel];
 
 const referrals = [
   { name: "Pedro Lima", username: "@pedrolima", level: 1, earnings: 125, date: "2026-01-22" },
@@ -35,8 +44,8 @@ const referrals = [
 ];
 
 const commissionRates = {
-  level1: 10,
-  level2: 5,
+  level1: currentLevelInfo.commission,
+  level2: Math.floor(currentLevelInfo.commission / 2),
 };
 
 const Affiliates = () => {
@@ -55,6 +64,13 @@ const Affiliates = () => {
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="inline-block mb-4"
+          >
+            <AffiliateLevelBadge level={currentAffiliateLevel} size="lg" showCommission />
+          </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -71,6 +87,51 @@ const Affiliates = () => {
             Indique jogadores e ganhe comissões em dois níveis. Quanto mais você indica, mais você ganha!
           </motion.p>
         </div>
+
+        {/* Affiliate Level Progress */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-8"
+        >
+          <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/30">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div>
+                  <h3 className="font-display font-bold text-lg mb-2">Seu Nível de Afiliado</h3>
+                  <AffiliateLevelBadge level={currentAffiliateLevel} size="lg" showCommission />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {affiliateStats.level1Referrals} indicados • R$ {affiliateStats.totalVolume.toLocaleString()} volume
+                  </p>
+                </div>
+                
+                <div className="flex-1 max-w-md w-full">
+                  <div className="space-y-2">
+                    {(Object.entries(AFFILIATE_LEVELS) as [AffiliateLevel, typeof AFFILIATE_LEVELS[AffiliateLevel]][]).map(([level, info]) => {
+                      const isCurrentLevel = level === currentAffiliateLevel;
+                      const isUnlocked = affiliateStats.level1Referrals >= info.minReferrals;
+                      return (
+                        <div key={level} className={`flex items-center gap-3 p-2 rounded-lg ${isCurrentLevel ? 'bg-primary/20' : ''}`}>
+                          <div className={`w-3 h-3 rounded-full ${isUnlocked ? 'bg-success' : 'bg-muted'}`} />
+                          <span className={`flex-1 text-sm ${isCurrentLevel ? 'font-bold' : ''}`}>
+                            {info.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {info.minReferrals}+ indicados
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {info.commission}%
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* How it Works */}
         <motion.div
