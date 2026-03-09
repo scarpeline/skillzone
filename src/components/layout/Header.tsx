@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Gamepad2,
   Trophy,
@@ -11,10 +12,9 @@ import {
   Menu,
   X,
   Users,
-  Star,
   Target,
   Crown,
-  Shield,
+  LogOut,
 } from "lucide-react";
 
 const navItems = [
@@ -29,12 +29,19 @@ const navItems = [
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+    setIsOpen(false);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
             <div className="relative">
               <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center glow-cyan">
@@ -46,18 +53,13 @@ export function Header() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return (
                 <Link key={item.path} to={item.path}>
-                  <Button
-                    variant={isActive ? "default" : "ghost"}
-                    size="sm"
-                    className={isActive ? "" : "text-muted-foreground hover:text-foreground"}
-                  >
+                  <Button variant={isActive ? "default" : "ghost"} size="sm" className={isActive ? "" : "text-muted-foreground hover:text-foreground"}>
                     <Icon className="w-4 h-4" />
                     {item.label}
                   </Button>
@@ -66,39 +68,37 @@ export function Header() {
             })}
           </nav>
 
-          {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/wallet">
-              <Button variant="outline" size="sm">
-                <Wallet className="w-4 h-4" />
-                Carteira
-              </Button>
-            </Link>
-            <Link to="/profile">
-              <Button variant="ghost" size="icon">
-                <User className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="hero" size="sm">
-                Entrar
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/wallet">
+                  <Button variant="outline" size="sm">
+                    <Wallet className="w-4 h-4" /> Carteira
+                  </Button>
+                </Link>
+                <Link to="/profile">
+                  <Button variant="ghost" size="sm">
+                    <User className="w-4 h-4" />
+                    {profile?.display_name || profile?.username || "Perfil"}
+                  </Button>
+                </Link>
+                <Button variant="outline" size="icon" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </>
+            ) : (
+              <Link to="/login">
+                <Button variant="hero" size="sm">Entrar</Button>
+              </Link>
+            )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setIsOpen(!isOpen)}
-          >
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </Button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -112,39 +112,35 @@ export function Header() {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      className="w-full justify-start"
-                    >
-                      <Icon className="w-5 h-5 mr-2" />
-                      {item.label}
+                  <Link key={item.path} to={item.path} onClick={() => setIsOpen(false)}>
+                    <Button variant={isActive ? "default" : "ghost"} className="w-full justify-start">
+                      <Icon className="w-5 h-5 mr-2" /> {item.label}
                     </Button>
                   </Link>
                 );
               })}
               <div className="h-px bg-border my-2" />
-              <Link to="/wallet" onClick={() => setIsOpen(false)}>
-                <Button variant="outline" className="w-full justify-start">
-                  <Wallet className="w-5 h-5 mr-2" />
-                  Carteira
-                </Button>
-              </Link>
-              <Link to="/profile" onClick={() => setIsOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start">
-                  <User className="w-5 h-5 mr-2" />
-                  Perfil
-                </Button>
-              </Link>
-              <Link to="/login" onClick={() => setIsOpen(false)}>
-                <Button variant="hero" className="w-full">
-                  Entrar
-                </Button>
-              </Link>
+              {user ? (
+                <>
+                  <Link to="/wallet" onClick={() => setIsOpen(false)}>
+                    <Button variant="outline" className="w-full justify-start">
+                      <Wallet className="w-5 h-5 mr-2" /> Carteira
+                    </Button>
+                  </Link>
+                  <Link to="/profile" onClick={() => setIsOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start">
+                      <User className="w-5 h-5 mr-2" /> Perfil
+                    </Button>
+                  </Link>
+                  <Button variant="outline" className="w-full justify-start" onClick={handleSignOut}>
+                    <LogOut className="w-5 h-5 mr-2" /> Sair
+                  </Button>
+                </>
+              ) : (
+                <Link to="/login" onClick={() => setIsOpen(false)}>
+                  <Button variant="hero" className="w-full">Entrar</Button>
+                </Link>
+              )}
             </nav>
           </motion.div>
         )}
