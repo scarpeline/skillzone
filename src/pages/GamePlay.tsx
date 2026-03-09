@@ -2,6 +2,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { MemoryGame } from "@/components/games/MemoryGame";
 import { QuizGame } from "@/components/games/QuizGame";
+import { SudokuGame } from "@/components/games/SudokuGame";
+import { PuzzleGame } from "@/components/games/PuzzleGame";
+import { CheckersGame } from "@/components/games/CheckersGame";
+import { ReversiGame } from "@/components/games/ReversiGame";
+import { ChessGame } from "@/components/games/ChessGame";
+import { GoGame } from "@/components/games/GoGame";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,7 +35,6 @@ export default function GamePlay() {
   const handleGameEnd = async (score: number) => {
     if (profile) {
       try {
-        // Save match
         await supabase.from("matches").insert({
           game_id: gameId || "unknown",
           player1_id: profile.id,
@@ -40,7 +45,6 @@ export default function GamePlay() {
           winner_id: profile.id,
         });
 
-        // Update profile stats
         await supabase
           .from("profiles")
           .update({
@@ -72,6 +76,18 @@ export default function GamePlay() {
         return <MemoryGame difficulty="medium" onGameEnd={handleGameEnd} />;
       case "quiz":
         return <QuizGame onGameEnd={handleGameEnd} />;
+      case "sudoku":
+        return <SudokuGame onGameEnd={handleGameEnd} />;
+      case "puzzle":
+        return <PuzzleGame onGameEnd={handleGameEnd} />;
+      case "checkers":
+        return <CheckersGame onGameEnd={handleGameEnd} />;
+      case "reversi":
+        return <ReversiGame onGameEnd={handleGameEnd} />;
+      case "chess":
+        return <ChessGame onGameEnd={handleGameEnd} />;
+      case "go":
+        return <GoGame onGameEnd={handleGameEnd} />;
       default:
         return (
           <Card className="p-8 text-center">
@@ -79,11 +95,11 @@ export default function GamePlay() {
               {GAME_NAMES[gameId || ""] || "Jogo"} — Em Breve!
             </h3>
             <p className="text-muted-foreground mb-4">
-              Este jogo está em desenvolvimento. Experimente Memory Master ou Quiz!
+              Este jogo está em desenvolvimento.
             </p>
-            <div className="flex gap-3 justify-center">
+            <div className="flex gap-3 justify-center flex-wrap">
               <Button variant="hero" onClick={() => navigate("/games/memory/play")}>
-                🎴 Memory Master
+                🎴 Memory
               </Button>
               <Button variant="outline" onClick={() => navigate("/games/quiz/play")}>
                 ❓ Quiz
