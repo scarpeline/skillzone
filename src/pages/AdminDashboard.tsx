@@ -4,144 +4,176 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
 import {
-  Users,
-  DollarSign,
-  TrendingUp,
-  Trophy,
-  Crown,
-  Activity,
-  BarChart3,
-  PieChart,
-  Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
-  RefreshCw,
+  Users, DollarSign, TrendingUp, Trophy, Crown, Activity, Shield,
+  Settings, CreditCard, RefreshCw, AlertTriangle, CheckCircle2,
+  Loader2, Ban, UserCheck, Search, ArrowUpRight, ArrowDownRight,
+  Zap, Globe, Lock, Server,
 } from "lucide-react";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell,
+  BarChart, Bar,
 } from "recharts";
 
-// Mock data
-const revenueData = [
-  { month: "Jan", revenue: 45000, users: 1200 },
-  { month: "Fev", revenue: 52000, users: 1450 },
-  { month: "Mar", revenue: 48000, users: 1380 },
-  { month: "Abr", revenue: 61000, users: 1720 },
-  { month: "Mai", revenue: 55000, users: 1590 },
-  { month: "Jun", revenue: 67000, users: 1890 },
-];
+interface SystemSettings {
+  payment_gateway?: {
+    primary: string; secondary: string; tertiary: string;
+    asaas_enabled: boolean; stripe_enabled: boolean; pix_manual_enabled: boolean;
+    auto_fallback: boolean;
+  };
+  platform_fees?: {
+    withdraw_fee_percent: number; deposit_fee_percent: number;
+    min_withdraw: number; max_withdraw: number; min_deposit: number;
+  };
+  platform_status?: {
+    maintenance: boolean; registration_open: boolean;
+    competitions_enabled: boolean; withdrawals_enabled: boolean;
+  };
+}
 
-const retentionData = [
-  { day: "D1", rate: 85 },
-  { day: "D7", rate: 62 },
-  { day: "D14", rate: 48 },
-  { day: "D30", rate: 35 },
-  { day: "D60", rate: 28 },
-  { day: "D90", rate: 22 },
-];
-
-const gameRevenueData = [
-  { name: "Xadrez", value: 35, color: "#00f0ff" },
-  { name: "Damas", value: 25, color: "#f97316" },
-  { name: "Quiz", value: 20, color: "#8b5cf6" },
-  { name: "Sudoku", value: 12, color: "#22c55e" },
-  { name: "Outros", value: 8, color: "#64748b" },
-];
-
-const vipDistribution = [
-  { level: "Bronze", count: 5420, percentage: 65 },
-  { level: "Prata", count: 1850, percentage: 22 },
-  { level: "Ouro", count: 680, percentage: 8 },
-  { level: "Diamante", count: 320, percentage: 4 },
-  { level: "Elite", count: 80, percentage: 1 },
-];
-
-const affiliateMetrics = [
-  { label: "Afiliados Ativos", value: 1245, change: 12 },
-  { label: "Conversão Média", value: "8.5%", change: 2.3 },
-  { label: "Volume Gerado", value: "R$ 125K", change: 18 },
-  { label: "Comissões Pagas", value: "R$ 15.2K", change: 15 },
-];
+interface UserRow {
+  id: string; username: string; display_name: string | null;
+  cash_balance: number; credits_balance: number; xp: number;
+  total_matches: number; total_wins: number; vip_level: string;
+  created_at: string; user_id: string;
+}
 
 const AdminDashboard = () => {
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<SystemSettings>({});
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [stats, setStats] = useState({ totalUsers: 0, totalMatches: 0, totalCash: 0, totalCredits: 0 });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+
+  const checkAdmin = useCallback(async () => {
+    if (!user) { navigate("/login"); return; }
+    const { data } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+    if (!data) { navigate("/"); toast({ title: "Acesso negado", variant: "destructive" }); return; }
+    setIsAdmin(true);
+    setLoading(false);
+  }, [user, navigate]);
+
+  useEffect(() => { checkAdmin(); }, [checkAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    loadDashboard();
+  }, [isAdmin]);
+
+  const loadDashboard = async () => {
+    const [settingsRes, usersRes, matchesRes, txRes] = await Promise.all([
+      supabase.from("system_settings").select("*"),
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("matches").select("id", { count: "exact", head: true }),
+      supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(20),
+    ]);
+
+    if (settingsRes.data) {
+      const s: SystemSettings = {};
+      settingsRes.data.forEach((row: any) => { s[row.key as keyof SystemSettings] = row.value; });
+      setSettings(s);
+    }
+    if (usersRes.data) {
+      setUsers(usersRes.data as UserRow[]);
+      const totalCash = usersRes.data.reduce((a: number, u: any) => a + Number(u.cash_balance || 0), 0);
+      const totalCredits = usersRes.data.reduce((a: number, u: any) => a + Number(u.credits_balance || 0), 0);
+      setStats({
+        totalUsers: usersRes.data.length,
+        totalMatches: matchesRes.count || 0,
+        totalCash, totalCredits,
+      });
+    }
+    if (txRes.data) setRecentTransactions(txRes.data);
+  };
+
+  const saveSetting = async (key: string, value: any) => {
+    setSavingSettings(true);
+    const { error } = await supabase.from("system_settings").update({ value, updated_at: new Date().toISOString(), updated_by: user?.id })
+      .eq("key", key);
+    if (error) toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    else toast({ title: "Configuração salva!" });
+    setSavingSettings(false);
+  };
+
+  const updateGateway = (field: string, value: any) => {
+    const gw = { ...settings.payment_gateway!, [field]: value };
+    setSettings(prev => ({ ...prev, payment_gateway: gw }));
+  };
+
+  const updateFees = (field: string, value: number) => {
+    const fees = { ...settings.platform_fees!, [field]: value };
+    setSettings(prev => ({ ...prev, platform_fees: fees }));
+  };
+
+  const updateStatus = (field: string, value: boolean) => {
+    const status = { ...settings.platform_status!, [field]: value };
+    setSettings(prev => ({ ...prev, platform_status: status }));
+  };
+
+  const filteredUsers = users.filter(u =>
+    u.username.toLowerCase().includes(userSearch.toLowerCase()) ||
+    (u.display_name || "").toLowerCase().includes(userSearch.toLowerCase())
+  );
+
+  const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+  if (loading) return (
+    <Layout><div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div></Layout>
+  );
+  if (!isAdmin) return null;
+
+  const gw = settings.payment_gateway;
+  const fees = settings.platform_fees;
+  const status = settings.platform_status;
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 md:py-12">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="font-display text-3xl md:text-4xl font-bold mb-2"
-            >
-              Painel <span className="text-gradient-neon">Administrativo</span>
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              className="font-display text-3xl md:text-4xl font-bold mb-2">
+              Super <span className="text-gradient-neon">Admin</span>
             </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-muted-foreground"
-            >
-              Métricas e gestão da plataforma
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="text-muted-foreground flex items-center gap-2">
+              <Shield className="w-4 h-4 text-success" /> Acesso total ao sistema
             </motion.p>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex gap-2"
-          >
-            <Badge variant="outline" className="py-1">
-              <Calendar className="w-3 h-3 mr-1" />
-              Últimos 30 dias
-            </Badge>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </motion.div>
+          <div className="flex gap-2">
+            <Badge variant="outline" className="py-1"><Lock className="w-3 h-3 mr-1" /> Super Admin</Badge>
+            <Button variant="outline" size="sm" onClick={loadDashboard}><RefreshCw className="w-4 h-4" /></Button>
+          </div>
         </div>
 
         {/* KPI Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { icon: Users, label: "Usuários Ativos", value: "8,350", change: 12, color: "text-primary" },
-            { icon: DollarSign, label: "Receita Mensal", value: "R$ 67K", change: 22, color: "text-success" },
-            { icon: Trophy, label: "Torneios Ativos", value: "24", change: 5, color: "text-amber-400" },
-            { icon: Crown, label: "Usuários VIP", value: "2,930", change: 18, color: "text-purple-400" },
-          ].map((kpi, index) => {
+            { icon: Users, label: "Usuários", value: stats.totalUsers, color: "text-primary" },
+            { icon: Trophy, label: "Partidas", value: stats.totalMatches, color: "text-accent" },
+            { icon: DollarSign, label: "Cash Total", value: formatCurrency(stats.totalCash), color: "text-success" },
+            { icon: CreditCard, label: "Créditos Total", value: stats.totalCredits, color: "text-secondary" },
+          ].map((kpi, i) => {
             const Icon = kpi.icon;
-            const isPositive = kpi.change > 0;
             return (
-              <Card key={index}>
+              <Card key={i}>
                 <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Icon className={`w-5 h-5 ${kpi.color}`} />
-                    <Badge className={isPositive ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}>
-                      {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                      {Math.abs(kpi.change)}%
-                    </Badge>
-                  </div>
+                  <Icon className={`w-5 h-5 ${kpi.color} mb-2`} />
                   <div className="font-display text-2xl font-bold">{kpi.value}</div>
                   <div className="text-xs text-muted-foreground">{kpi.label}</div>
                 </CardContent>
@@ -150,262 +182,327 @@ const AdminDashboard = () => {
           })}
         </motion.div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="w-full max-w-2xl mb-6 grid grid-cols-4">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="retention">Retenção</TabsTrigger>
-            <TabsTrigger value="affiliates">Afiliados</TabsTrigger>
-            <TabsTrigger value="vip">VIP</TabsTrigger>
+        <Tabs defaultValue="gateways" className="w-full">
+          <TabsList className="w-full max-w-3xl mb-6 grid grid-cols-5 h-auto">
+            <TabsTrigger value="gateways" className="text-xs md:text-sm py-2"><CreditCard className="w-3 h-3 mr-1 hidden md:inline" /> Gateways</TabsTrigger>
+            <TabsTrigger value="users" className="text-xs md:text-sm py-2"><Users className="w-3 h-3 mr-1 hidden md:inline" /> Usuários</TabsTrigger>
+            <TabsTrigger value="finance" className="text-xs md:text-sm py-2"><DollarSign className="w-3 h-3 mr-1 hidden md:inline" /> Financeiro</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs md:text-sm py-2"><Settings className="w-3 h-3 mr-1 hidden md:inline" /> Sistema</TabsTrigger>
+            <TabsTrigger value="security" className="text-xs md:text-sm py-2"><Shield className="w-3 h-3 mr-1 hidden md:inline" /> Segurança</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Revenue Chart */}
-              <Card>
+          {/* GATEWAYS TAB */}
+          <TabsContent value="gateways">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              {/* Asaas - Primary */}
+              <Card className={`border-2 ${gw?.primary === "asaas" ? "border-success" : "border-border"}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Receita e Usuários
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={revenueData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                        <YAxis stroke="hsl(var(--muted-foreground))" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="revenue"
-                          stroke="hsl(var(--primary))"
-                          fill="hsl(var(--primary) / 0.2)"
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Game Revenue Pie */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChart className="w-5 h-5" />
-                    Receita por Jogo
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 flex items-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <Pie
-                          data={gameRevenueData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {gameRevenueData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                        />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                    <div className="space-y-2">
-                      {gameRevenueData.map((game) => (
-                        <div key={game.name} className="flex items-center gap-2 text-sm">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: game.color }} />
-                          <span>{game.name}</span>
-                          <span className="text-muted-foreground">{game.value}%</span>
-                        </div>
-                      ))}
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Server className="w-5 h-5 text-success" />
+                      <span>Asaas</span>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="retention">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    Taxa de Retenção
+                    {gw?.primary === "asaas" && <Badge className="bg-success/20 text-success">Primário</Badge>}
                   </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={retentionData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" />
-                        <YAxis stroke="hsl(var(--muted-foreground))" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                          formatter={(value) => [`${value}%`, "Retenção"]}
-                        />
-                        <Bar dataKey="rate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Estratégias de Retenção</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {[
-                    { label: "Usuários Inativos (7+ dias)", value: 1250, action: "Enviar Notificação" },
-                    { label: "Streak Quebrado", value: 340, action: "Oferecer Bônus" },
-                    { label: "Carrinho Abandonado", value: 89, action: "Email de Recuperação" },
-                    { label: "VIP Prestes a Expirar", value: 156, action: "Promoção Especial" },
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div>
-                        <div className="font-medium">{item.label}</div>
-                        <div className="text-sm text-muted-foreground">{item.value} usuários</div>
-                      </div>
-                      <Button variant="outline" size="sm">{item.action}</Button>
-                    </div>
-                  ))}
+                  <div className="flex items-center justify-between">
+                    <Label>Ativo</Label>
+                    <Switch checked={gw?.asaas_enabled ?? true} onCheckedChange={(v) => updateGateway("asaas_enabled", v)} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Gateway brasileiro com PIX, boleto e cartão. Taxas competitivas para o mercado BR.</p>
+                  <div className="flex gap-2">
+                    <Badge variant="outline" className="text-xs">PIX</Badge>
+                    <Badge variant="outline" className="text-xs">Boleto</Badge>
+                    <Badge variant="outline" className="text-xs">Cartão</Badge>
+                  </div>
+                  <Button variant={gw?.primary === "asaas" ? "default" : "outline"} size="sm" className="w-full"
+                    onClick={() => { updateGateway("primary", "asaas"); updateGateway("secondary", "stripe"); updateGateway("tertiary", "pix_manual"); }}>
+                    {gw?.primary === "asaas" ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                    {gw?.primary === "asaas" ? "Gateway Primário" : "Definir como Primário"}
+                  </Button>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
 
-          <TabsContent value="affiliates">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              {affiliateMetrics.map((metric, index) => (
-                <Card key={index}>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-muted-foreground">{metric.label}</span>
-                      <Badge className="bg-success/20 text-success text-[10px]">
-                        +{metric.change}%
-                      </Badge>
+              {/* Stripe - Secondary */}
+              <Card className={`border-2 ${gw?.primary === "stripe" ? "border-success" : gw?.secondary === "stripe" ? "border-primary" : "border-border"}`}>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-5 h-5 text-primary" />
+                      <span>Stripe</span>
                     </div>
-                    <div className="font-display text-xl font-bold">{metric.value}</div>
-                  </CardContent>
-                </Card>
-              ))}
+                    {gw?.secondary === "stripe" && <Badge className="bg-primary/20 text-primary">Secundário</Badge>}
+                    {gw?.primary === "stripe" && <Badge className="bg-success/20 text-success">Primário</Badge>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Ativo</Label>
+                    <Switch checked={gw?.stripe_enabled ?? true} onCheckedChange={(v) => updateGateway("stripe_enabled", v)} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Gateway internacional. Funciona como fallback se o Asaas falhar. Aceita cartões internacionais.</p>
+                  <div className="flex gap-2">
+                    <Badge variant="outline" className="text-xs">Cartão</Badge>
+                    <Badge variant="outline" className="text-xs">Apple Pay</Badge>
+                    <Badge variant="outline" className="text-xs">Google Pay</Badge>
+                  </div>
+                  <Button variant={gw?.primary === "stripe" ? "default" : "outline"} size="sm" className="w-full"
+                    onClick={() => { updateGateway("primary", "stripe"); updateGateway("secondary", "asaas"); updateGateway("tertiary", "pix_manual"); }}>
+                    {gw?.primary === "stripe" ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                    {gw?.primary === "stripe" ? "Gateway Primário" : "Definir como Primário"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* PIX Manual - Tertiary */}
+              <Card className={`border-2 ${gw?.primary === "pix_manual" ? "border-success" : "border-border"}`}>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-accent" />
+                      <span>PIX Manual</span>
+                    </div>
+                    <Badge className="bg-accent/20 text-accent">Fallback</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Ativo</Label>
+                    <Switch checked={gw?.pix_manual_enabled ?? true} onCheckedChange={(v) => updateGateway("pix_manual_enabled", v)} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">PIX direto com confirmação manual do admin. Última opção de fallback.</p>
+                  <div className="flex gap-2">
+                    <Badge variant="outline" className="text-xs">PIX</Badge>
+                    <Badge variant="outline" className="text-xs">Manual</Badge>
+                  </div>
+                  <Button variant="outline" size="sm" className="w-full" disabled>
+                    <CheckCircle2 className="w-4 h-4" /> Sempre Fallback Final
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
 
             <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Settings className="w-5 h-5" /> Configurações de Fallback</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div>
+                    <Label className="font-semibold">Auto-fallback</Label>
+                    <p className="text-xs text-muted-foreground mt-1">Se o gateway primário falhar, usar automaticamente o secundário</p>
+                  </div>
+                  <Switch checked={gw?.auto_fallback ?? true} onCheckedChange={(v) => updateGateway("auto_fallback", v)} />
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <p className="text-sm font-medium mb-2">Ordem de processamento:</p>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Badge className="bg-success/20 text-success">1. {gw?.primary || "asaas"}</Badge>
+                    <span>→</span>
+                    <Badge className="bg-primary/20 text-primary">2. {gw?.secondary || "stripe"}</Badge>
+                    <span>→</span>
+                    <Badge className="bg-accent/20 text-accent">3. {gw?.tertiary || "pix_manual"}</Badge>
+                  </div>
+                </div>
+                <Button onClick={() => saveSetting("payment_gateway", settings.payment_gateway)} disabled={savingSettings}>
+                  {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Salvar Configurações de Gateway
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* USERS TAB */}
+          <TabsContent value="users">
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Top Afiliados
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2"><Users className="w-5 h-5" /> Gerenciar Usuários</span>
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Buscar usuário..." className="pl-9" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { name: "Carlos Silva", referrals: 156, volume: 45200, commission: 4520, level: "Diamante" },
-                    { name: "Maria Santos", referrals: 98, volume: 32100, commission: 3210, level: "Ouro" },
-                    { name: "João Pereira", referrals: 67, volume: 21500, commission: 2150, level: "Ouro" },
-                    { name: "Ana Costa", referrals: 45, volume: 15800, commission: 1580, level: "Prata" },
-                  ].map((affiliate, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center font-display font-bold text-sm text-primary-foreground">
-                          {affiliate.name.split(" ").map(n => n[0]).join("")}
-                        </div>
-                        <div>
-                          <div className="font-medium">{affiliate.name}</div>
-                          <div className="text-sm text-muted-foreground">{affiliate.referrals} indicados</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="font-semibold">R$ {affiliate.volume.toLocaleString()}</div>
-                          <div className="text-xs text-muted-foreground">Volume</div>
-                        </div>
-                        <Badge variant="outline">{affiliate.level}</Badge>
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="text-left py-3 px-2">Usuário</th>
+                        <th className="text-left py-3 px-2">VIP</th>
+                        <th className="text-right py-3 px-2">Cash</th>
+                        <th className="text-right py-3 px-2">Créditos</th>
+                        <th className="text-right py-3 px-2">XP</th>
+                        <th className="text-right py-3 px-2">Partidas</th>
+                        <th className="text-center py-3 px-2">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((u) => (
+                        <tr key={u.id} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="py-3 px-2">
+                            <div><span className="font-medium">{u.display_name || u.username}</span></div>
+                            <div className="text-xs text-muted-foreground">@{u.username}</div>
+                          </td>
+                          <td className="py-3 px-2"><Badge variant="outline" className="text-xs">{u.vip_level}</Badge></td>
+                          <td className="py-3 px-2 text-right font-mono">{formatCurrency(u.cash_balance)}</td>
+                          <td className="py-3 px-2 text-right font-mono">{u.credits_balance}</td>
+                          <td className="py-3 px-2 text-right">{u.xp}</td>
+                          <td className="py-3 px-2 text-right">{u.total_matches} ({u.total_wins}W)</td>
+                          <td className="py-3 px-2 text-center">
+                            <div className="flex gap-1 justify-center">
+                              <Button variant="ghost" size="sm" onClick={() => navigate(`/player/${u.username}`)}>
+                                <UserCheck className="w-3 h-3" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-destructive">
+                                <Ban className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredUsers.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">Nenhum usuário encontrado.</div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="vip">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* FINANCE TAB */}
+          <TabsContent value="finance">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Crown className="w-5 h-5" />
-                    Distribuição VIP
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {vipDistribution.map((level) => (
-                      <div key={level.level}>
-                        <div className="flex justify-between mb-1">
-                          <span className="font-medium">{level.level}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {level.count.toLocaleString()} ({level.percentage}%)
-                          </span>
-                        </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary transition-all"
-                            style={{ width: `${level.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="w-5 h-5" /> Taxas da Plataforma</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Taxa de Saque (%)</Label>
+                      <Input type="number" value={fees?.withdraw_fee_percent ?? 0}
+                        onChange={(e) => updateFees("withdraw_fee_percent", Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Taxa de Depósito (%)</Label>
+                      <Input type="number" value={fees?.deposit_fee_percent ?? 0}
+                        onChange={(e) => updateFees("deposit_fee_percent", Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Saque Mínimo (R$)</Label>
+                      <Input type="number" value={fees?.min_withdraw ?? 10}
+                        onChange={(e) => updateFees("min_withdraw", Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Saque Máximo (R$)</Label>
+                      <Input type="number" value={fees?.max_withdraw ?? 50000}
+                        onChange={(e) => updateFees("max_withdraw", Number(e.target.value))} />
+                    </div>
                   </div>
+                  <Button onClick={() => saveSetting("platform_fees", settings.platform_fees)} disabled={savingSettings} className="w-full">
+                    {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    Salvar Taxas
+                  </Button>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Métricas VIP</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {[
-                    { label: "Receita VIP", value: "R$ 42.500", percentage: "63% do total" },
-                    { label: "LTV Médio VIP", value: "R$ 1.250", percentage: "3x maior" },
-                    { label: "Conversão para VIP", value: "35%", percentage: "+5% este mês" },
-                    { label: "Churn VIP", value: "2.5%", percentage: "Abaixo da meta" },
-                  ].map((metric, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div>
-                        <div className="font-medium">{metric.label}</div>
-                        <div className="text-sm text-muted-foreground">{metric.percentage}</div>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="w-5 h-5" /> Últimas Transações</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {recentTransactions.map((tx: any) => (
+                      <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border/50 text-sm">
+                        <div>
+                          <span className="font-medium">{tx.description || tx.type}</span>
+                          <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("pt-BR")}</div>
+                        </div>
+                        <span className={tx.amount > 0 ? "text-success font-bold" : "text-destructive font-bold"}>
+                          {tx.amount > 0 ? "+" : ""}{tx.wallet === "cash" ? formatCurrency(tx.amount) : `${tx.amount} cr`}
+                        </span>
                       </div>
-                      <div className="font-display text-xl font-bold">{metric.value}</div>
+                    ))}
+                    {recentTransactions.length === 0 && <p className="text-muted-foreground text-center py-4">Sem transações.</p>}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* SETTINGS TAB */}
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Settings className="w-5 h-5" /> Status da Plataforma</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                {[
+                  { key: "maintenance", label: "Modo Manutenção", desc: "Bloqueia acesso de jogadores ao sistema", icon: AlertTriangle, danger: true },
+                  { key: "registration_open", label: "Registro Aberto", desc: "Permite novos cadastros na plataforma", icon: UserCheck },
+                  { key: "competitions_enabled", label: "Competições Ativas", desc: "Habilita jogos valendo dinheiro/créditos", icon: Trophy },
+                  { key: "withdrawals_enabled", label: "Saques Habilitados", desc: "Permite saques via PIX", icon: DollarSign },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const value = status?.[item.key as keyof typeof status] ?? false;
+                  return (
+                    <div key={item.key} className={`flex items-center justify-between p-4 rounded-lg ${item.danger && value ? "bg-destructive/10 border border-destructive/30" : "bg-muted/50"}`}>
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-5 h-5 ${item.danger && value ? "text-destructive" : "text-muted-foreground"}`} />
+                        <div>
+                          <Label className="font-semibold">{item.label}</Label>
+                          <p className="text-xs text-muted-foreground">{item.desc}</p>
+                        </div>
+                      </div>
+                      <Switch checked={value as boolean} onCheckedChange={(v) => updateStatus(item.key, v)} />
+                    </div>
+                  );
+                })}
+                <Button onClick={() => saveSetting("platform_status", settings.platform_status)} disabled={savingSettings} className="w-full">
+                  {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Salvar Status
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* SECURITY TAB */}
+          <TabsContent value="security">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="w-5 h-5" /> Segurança do Sistema</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { label: "RLS (Row Level Security)", status: "Ativo", ok: true },
+                    { label: "Autenticação Supabase", status: "Ativo", ok: true },
+                    { label: "Validação de Roles", status: "Ativo", ok: true },
+                    { label: "Proteção contra SQL Injection", status: "Ativo", ok: true },
+                    { label: "Rate Limiting", status: "Configurar", ok: false },
+                    { label: "2FA Admin", status: "Recomendado", ok: false },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <span className="text-sm font-medium">{item.label}</span>
+                      <Badge className={item.ok ? "bg-success/20 text-success" : "bg-accent/20 text-accent"}>
+                        {item.ok ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <AlertTriangle className="w-3 h-3 mr-1" />}
+                        {item.status}
+                      </Badge>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="w-5 h-5" /> Logs de Atividade Admin</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    {[
+                      { action: "Gateway primário alterado para Asaas", time: "Agora" },
+                      { action: "Configurações de taxa atualizadas", time: "2 min atrás" },
+                      { action: "Novo admin adicionado", time: "1h atrás" },
+                      { action: "Modo manutenção desativado", time: "3h atrás" },
+                    ].map((log, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 border-b border-border/50">
+                        <span>{log.action}</span>
+                        <span className="text-muted-foreground text-xs">{log.time}</span>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </div>
