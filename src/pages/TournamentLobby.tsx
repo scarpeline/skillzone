@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
   Trophy, Users, Clock, Calendar, DollarSign, ArrowLeft,
-  Crown, Medal, Award, RefreshCw, Zap, CheckCircle, Timer
+  Crown, Medal, Award, RefreshCw, Zap, CheckCircle, Timer, Loader2
 } from "lucide-react";
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -83,26 +83,78 @@ const MOCK_PARTICIPANTS: Participant[] = [
 export default function TournamentLobby() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
 
-  const [tournament] = useState<Tournament>(MOCK_TOURNAMENT);
-  const [participants, setParticipants] = useState<Participant[]>(MOCK_PARTICIPANTS);
+  const [tournament, setTournament] = useState<any>(null);
+  const [participants, setParticipants] = useState<any[]>([]);
   const [isRegistered, setIsRegistered] = useState(false);
   const [userRebuys, setUserRebuys] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
   const [timeUntilStart, setTimeUntilStart] = useState(0);
   const [showRebuyModal, setShowRebuyModal] = useState(false);
+  const [playerCount, setPlayerCount] = useState(0);
+
+  useEffect(() => {
+    if (tournamentId) fetchTournament();
+  }, [tournamentId]);
+
+  const fetchTournament = async () => {
+    setLoading(true);
+    const { data: t } = await supabase
+      .from("tournaments")
+      .select("*")
+      .eq("id", tournamentId)
+      .single();
+
+    if (t) {
+      setTournament(t);
+
+      // Contar inscritos
+      const { count } = await supabase
+        .from("tournament_registrations")
+        .select("*", { count: "exact", head: true })
+        .eq("tournament_id", tournamentId)
+        .neq("status", "refunded");
+      setPlayerCount(count ?? 0);
+
+      // Verificar se usuário está inscrito
+      if (profile) {
+        const { data: reg } = await supabase
+          .from("tournament_registrations")
+          .select("*")
+          .eq("tournament_id", tournamentId)
+          .eq("user_id", profile.user_id)
+          .maybeSingle();
+        if (reg) {
+          setIsRegistered(true);
+          setUserRebuys(reg.rebuys ?? 0);
+        }
+      }
+
+      // Ranking
+      const { data: regs } = await supabase
+        .from("tournament_registrations")
+        .select("*, profiles(username, display_name, avatar_url)")
+        .eq("tournament_id", tournamentId)
+        .order("score", { ascending: false })
+        .limit(20);
+      if (regs) setParticipants(regs);
+    }
+    setLoading(false);
+  };
 
   // Countdown
   useEffect(() => {
+    if (!tournament) return;
     const update = () => {
-      const diff = new Date(tournament.startTime).getTime() - Date.now();
+      const diff = new Date(tournament.starts_at).getTime() - Date.now();
       setTimeUntilStart(Math.max(0, Math.floor(diff / 1000)));
     };
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [tournament.startTime]);
+  }, [tournament]);
 
   const formatCountdown = (s: number) => {
     const h = Math.floor(s / 3600);
@@ -113,51 +165,81 @@ export default function TournamentLobby() {
     return `${sec}s`;
   };
 
-  // Prêmio acumulado = inscrições + garantido
-  const prizePool = Math.max(
-    tournament.guaranteedPrize,
-    tournament.currentPlayers * tournament.entryFee
-  );
+  const prizePool = tournament
+    ? Math.max(Number(tournament.guaranteed_prize), playerCount * Number(tournament.entry_fee))
+    : 0;
+
+  const formatCurrency = (v: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
   const handleRegister = async () => {
     if (!profile) {
       toast({ title: "Faça login para se inscrever", variant: "destructive" });
       return;
     }
-    const balance = Number(profile.cash_balance ?? 0);
-    if (balance < tournament.entryFee) {
-      toast({ title: "Saldo insuficiente", description: `Necessário: R$ ${tournament.entryFee}`, variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
+    setRegistering(true);
     try {
-      // TODO: Supabase insert tournament_registrations
-      await new Promise(r => setTimeout(r, 800));
-      setIsRegistered(true);
-      toast({ title: "✅ Inscrito com sucesso!", description: `Você está na fila para ${tournament.name}` });
-    } catch {
-      toast({ title: "Erro ao se inscrever", variant: "destructive" });
+      const { data, error } = await supabase.rpc("register_tournament", {
+        p_tournament_id: tournamentId,
+        p_user_id: profile.user_id,
+      });
+      if (error || data?.error) {
+        toast({ title: data?.error || error?.message, variant: "destructive" });
+      } else {
+        setIsRegistered(true);
+        setPlayerCount(c => c + 1);
+        await refreshProfile();
+        toast({ title: "✅ Inscrito com sucesso!", description: `Você está na fila para ${tournament.name}` });
+        fetchTournament();
+      }
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      setRegistering(false);
     }
   };
 
   const handleRebuy = async () => {
-    if (userRebuys >= tournament.maxRebuys) {
+    if (!profile || !tournament) return;
+    if (userRebuys >= tournament.max_rebuys) {
       toast({ title: "Limite de recompras atingido", variant: "destructive" });
       return;
     }
-    setLoading(true);
+    setRegistering(true);
     try {
-      await new Promise(r => setTimeout(r, 600));
+      // Debitar taxa de recompra
+      const wallet = tournament.entry_wallet;
+      const fee = Number(tournament.rebuy_fee);
+      if (fee > 0) {
+        await supabase.from("transactions").insert({
+          user_id: profile.user_id,
+          type: "entry",
+          wallet,
+          amount: -fee,
+          description: `Recompra: ${tournament.name}`,
+          reference: tournamentId,
+        });
+        await supabase.from("profiles").update({
+          [wallet === "cash" ? "cash_balance" : "credits_balance"]:
+            wallet === "cash"
+              ? Number(profile.cash_balance) - fee
+              : profile.credits_balance - fee,
+        }).eq("user_id", profile.user_id);
+      }
+      // Atualizar registro
+      await supabase.from("tournament_registrations")
+        .update({ rebuys: userRebuys + 1, status: "playing", score: 0 })
+        .eq("tournament_id", tournamentId)
+        .eq("user_id", profile.user_id);
+
       setUserRebuys(r => r + 1);
       setShowRebuyModal(false);
+      await refreshProfile();
       toast({ title: "🔄 Recompra realizada!", description: "Você voltou ao torneio!" });
-    } catch {
-      toast({ title: "Erro na recompra", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      setRegistering(false);
     }
   };
 
@@ -167,6 +249,25 @@ export default function TournamentLobby() {
     if (pos === 3) return <Award className="w-4 h-4 text-amber-600" />;
     return <span className="text-white/40 text-sm font-bold">#{pos}</span>;
   };
+
+  if (loading) return (
+    <Layout>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    </Layout>
+  );
+
+  if (!tournament) return (
+    <Layout>
+      <div className="container mx-auto px-4 py-16 text-center">
+        <p className="text-muted-foreground">Torneio não encontrado.</p>
+        <Button onClick={() => navigate("/tournaments")} className="mt-4">Voltar</Button>
+      </div>
+    </Layout>
+  );
+
+  const prizeDistribution: any[] = tournament.prize_distribution ?? [];
 
   return (
     <Layout>
@@ -181,17 +282,16 @@ export default function TournamentLobby() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-600 flex items-center justify-center text-4xl">
-              {tournament.gameIcon}
+              {tournament.game_icon}
             </div>
             <div className="flex-1">
               <div className="flex flex-wrap gap-2 mb-1">
                 <Badge className="bg-primary/20 text-primary border-primary/30">
                   {tournament.status === "registering" ? "Inscrições abertas" : "Ao vivo"}
                 </Badge>
-                {tournament.rebuyAllowed && (
+                {tournament.rebuy_allowed && (
                   <Badge variant="outline" className="text-green-400 border-green-400/30">
-                    <RefreshCw className="w-3 h-3 mr-1" />
-                    Recompra disponível
+                    <RefreshCw className="w-3 h-3 mr-1" />Recompra disponível
                   </Badge>
                 )}
               </div>
@@ -219,7 +319,7 @@ export default function TournamentLobby() {
                 <CardContent className="p-4 text-center">
                   <Users className="w-5 h-5 mx-auto mb-1 text-blue-400" />
                   <div className="font-display text-xl font-bold">
-                    {tournament.currentPlayers}/{tournament.maxPlayers}
+                    {playerCount}/{tournament.max_players}
                   </div>
                   <div className="text-xs text-muted-foreground">Jogadores</div>
                 </CardContent>
@@ -237,7 +337,7 @@ export default function TournamentLobby() {
                 <CardContent className="p-4 text-center">
                   <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="font-display text-xl font-bold">
-                    R$ {tournament.entryFee}
+                    {formatCurrency(Number(tournament.entry_fee))}
                   </div>
                   <div className="text-xs text-muted-foreground">Inscrição</div>
                 </CardContent>
@@ -253,13 +353,10 @@ export default function TournamentLobby() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Progress
-                  value={(tournament.currentPlayers / tournament.maxPlayers) * 100}
-                  className="h-3 mb-2"
-                />
+                <Progress value={(playerCount / tournament.max_players) * 100} className="h-3 mb-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{tournament.currentPlayers} inscritos</span>
-                  <span>{tournament.maxPlayers - tournament.currentPlayers} vagas restantes</span>
+                  <span>{playerCount} inscritos</span>
+                  <span>{tournament.max_players - playerCount} vagas restantes</span>
                 </div>
               </CardContent>
             </Card>
@@ -274,37 +371,22 @@ export default function TournamentLobby() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {participants.map((p, i) => (
-                  <motion.div
-                    key={p.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                      i < 5 ? "border-yellow-400/20 bg-yellow-400/5" : "border-border bg-card/30"
-                    }`}
-                  >
-                    <div className="w-8 flex justify-center">
-                      {positionIcon(p.position)}
-                    </div>
-                    <div className="text-2xl">{p.avatar}</div>
+                  <motion.div key={p.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${i < 5 ? "border-yellow-400/20 bg-yellow-400/5" : "border-border bg-card/30"}`}>
+                    <div className="w-8 flex justify-center">{positionIcon(i + 1)}</div>
+                    <div className="text-2xl">🎮</div>
                     <div className="flex-1">
-                      <div className="font-semibold text-sm">{p.username}</div>
-                      {p.rebuys > 0 && (
-                        <div className="text-xs text-muted-foreground">
-                          <RefreshCw className="w-3 h-3 inline mr-1" />
-                          {p.rebuys} recompra{p.rebuys > 1 ? "s" : ""}
-                        </div>
-                      )}
+                      <div className="font-semibold text-sm">{p.profiles?.display_name || p.profiles?.username || "Jogador"}</div>
+                      {p.rebuys > 0 && <div className="text-xs text-muted-foreground"><RefreshCw className="w-3 h-3 inline mr-1" />{p.rebuys} recompra{p.rebuys > 1 ? "s" : ""}</div>}
                     </div>
                     <div className="text-right">
-                      <div className="font-display font-bold text-yellow-400">{p.score.toLocaleString()}</div>
+                      <div className="font-display font-bold text-yellow-400">{(p.score ?? 0).toLocaleString()}</div>
                       <div className="text-xs text-muted-foreground">pts</div>
                     </div>
-                    {/* Prêmio estimado */}
-                    {i < tournament.prizeDistribution.length && (
+                    {i < prizeDistribution.length && (
                       <div className="text-right min-w-[60px]">
                         <div className="text-xs text-green-400 font-bold">
-                          R$ {Math.round(prizePool * tournament.prizeDistribution[i].percent / 100).toLocaleString()}
+                          {formatCurrency(Math.round(prizePool * prizeDistribution[i].percent / 100))}
                         </div>
                         <div className="text-[10px] text-muted-foreground">prêmio</div>
                       </div>
@@ -326,13 +408,11 @@ export default function TournamentLobby() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {tournament.prizeDistribution.map(d => (
+                {prizeDistribution.map((d: any) => (
                   <div key={d.position} className="flex items-center justify-between">
                     <span className="text-sm">{d.label}</span>
                     <div className="text-right">
-                      <span className="font-bold text-yellow-400">
-                        R$ {Math.round(prizePool * d.percent / 100).toLocaleString()}
-                      </span>
+                      <span className="font-bold text-yellow-400">{formatCurrency(Math.round(prizePool * d.percent / 100))}</span>
                       <span className="text-xs text-muted-foreground ml-1">({d.percent}%)</span>
                     </div>
                   </div>
@@ -340,37 +420,20 @@ export default function TournamentLobby() {
                 <div className="border-t border-border pt-2 mt-2">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Prêmio garantido</span>
-                    <span className="text-green-400">R$ {tournament.guaranteedPrize.toLocaleString()}</span>
+                    <span className="text-green-400">{formatCurrency(Number(tournament.guaranteed_prize))}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Recompra */}
-            {tournament.rebuyAllowed && (
+            {tournament.rebuy_allowed && (
               <Card className="border-green-400/20">
-                <CardHeader>
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 text-green-400" />
-                    Recompra
-                  </CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><RefreshCw className="w-4 h-4 text-green-400" />Recompra</CardTitle></CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Valor</span>
-                    <span className="font-bold">R$ {tournament.rebuyFee}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Máximo</span>
-                    <span className="font-bold">{tournament.maxRebuys}x</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Suas recompras</span>
-                    <span className="font-bold">{userRebuys}/{tournament.maxRebuys}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Se for eliminado, pode recomprar e continuar jogando.
-                  </p>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span className="font-bold">{formatCurrency(Number(tournament.rebuy_fee))}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Máximo</span><span className="font-bold">{tournament.max_rebuys}x</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Suas recompras</span><span className="font-bold">{userRebuys}/{tournament.max_rebuys}</span></div>
+                  <p className="text-xs text-muted-foreground">Se for eliminado, pode recomprar e continuar jogando.</p>
                 </CardContent>
               </Card>
             )}
@@ -383,12 +446,12 @@ export default function TournamentLobby() {
                   disabled={loading}
                   className="w-full h-14 text-lg font-bold bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black"
                 >
-                  {loading ? (
-                    <RefreshCw className="w-5 h-5 animate-spin" />
+                  {registering ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
                       <Zap className="w-5 h-5 mr-2" />
-                      Inscrever-se — R$ {tournament.entryFee}
+                      Inscrever-se — {formatCurrency(Number(tournament.entry_fee))}
                     </>
                   )}
                 </Button>
@@ -398,31 +461,20 @@ export default function TournamentLobby() {
                     <CheckCircle className="w-5 h-5 text-green-400" />
                     <div>
                       <p className="text-sm font-semibold text-green-400">Inscrito!</p>
-                      <p className="text-xs text-muted-foreground">
-                        Aguardando início em {formatCountdown(timeUntilStart)}
-                      </p>
+                      <p className="text-xs text-muted-foreground">Aguardando início em {formatCountdown(timeUntilStart)}</p>
                     </div>
                   </div>
-                  {tournament.rebuyAllowed && userRebuys < tournament.maxRebuys && (
-                    <Button
-                      onClick={() => setShowRebuyModal(true)}
-                      variant="outline"
-                      className="w-full border-green-400/30 text-green-400 hover:bg-green-400/10"
-                    >
+                  {tournament.rebuy_allowed && userRebuys < tournament.max_rebuys && (
+                    <Button onClick={() => setShowRebuyModal(true)} variant="outline" className="w-full border-green-400/30 text-green-400 hover:bg-green-400/10">
                       <RefreshCw className="w-4 h-4 mr-2" />
-                      Recompra — R$ {tournament.rebuyFee}
+                      Recompra — {formatCurrency(Number(tournament.rebuy_fee))}
                     </Button>
                   )}
                 </div>
               )}
-
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Calendar className="w-3 h-3" />
-                <span>
-                  Início: {new Date(tournament.startTime).toLocaleDateString("pt-BR", {
-                    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
-                  })}
-                </span>
+                <span>Início: {new Date(tournament.starts_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
               </div>
             </div>
           </div>
@@ -453,14 +505,8 @@ export default function TournamentLobby() {
                   </p>
                 </div>
                 <div className="bg-muted/30 rounded-xl p-4 mb-6 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Custo da recompra</span>
-                    <span className="font-bold">R$ {tournament.rebuyFee}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Recompras restantes</span>
-                    <span className="font-bold">{tournament.maxRebuys - userRebuys - 1}x após esta</span>
-                  </div>
+                  <div className="flex justify-between"><span>Custo da recompra</span><span className="font-bold">{formatCurrency(Number(tournament.rebuy_fee))}</span></div>
+                  <div className="flex justify-between"><span>Recompras restantes</span><span className="font-bold">{tournament.max_rebuys - userRebuys - 1}x após esta</span></div>
                 </div>
                 <div className="flex gap-3">
                   <Button
@@ -470,12 +516,8 @@ export default function TournamentLobby() {
                   >
                     Cancelar
                   </Button>
-                  <Button
-                    onClick={handleRebuy}
-                    disabled={loading}
-                    className="flex-1 bg-green-600 hover:bg-green-500"
-                  >
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Confirmar"}
+                  <Button onClick={handleRebuy} disabled={registering} className="flex-1 bg-green-600 hover:bg-green-500">
+                    {registering ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar"}
                   </Button>
                 </div>
               </motion.div>
