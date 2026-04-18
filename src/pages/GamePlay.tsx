@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { MemoryGame } from "@/components/games/MemoryGame";
 import { QuizGame } from "@/components/games/QuizGame";
@@ -8,6 +8,9 @@ import { CheckersGame } from "@/components/games/CheckersGame";
 import { ReversiGame } from "@/components/games/ReversiGame";
 import { ChessGame } from "@/components/games/ChessGame";
 import { GoGame } from "@/components/games/GoGame";
+import { SlotMachine } from "@/components/games/SlotMachine";
+import { MahjongGame } from "@/components/games/MahjongGame";
+import type { SlotTheme } from "@/components/games/SlotMachine";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +25,9 @@ const GAME_NAMES: Record<string, string> = {
   memory: "Memory Master", quiz: "Quiz de Conhecimento", chess: "Xadrez",
   checkers: "Damas", go: "Go", reversi: "Reversi",
   sudoku: "Sudoku Competitivo", puzzle: "Puzzle Rush",
+  "slot-tiger": "Tigrinho 🐯", "slot-fruits": "Frutas da Sorte 🍒",
+  "slot-gems": "Gemas Mágicas 💎", "slot-egypt": "Faraó do Egito 🦅",
+  mahjong: "Mahjong Solitaire 🀄",
 };
 
 type StakeMode = "free" | "credits" | "cash";
@@ -159,6 +165,11 @@ export default function GamePlay() {
       case "reversi": return <ReversiGame onGameEnd={handleGameEnd} />;
       case "chess": return <ChessGame onGameEnd={handleGameEnd} />;
       case "go": return <GoGame onGameEnd={handleGameEnd} />;
+      case "slot-tiger": return <SlotMachine theme="tiger" onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
+      case "slot-fruits": return <SlotMachine theme="fruits" onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
+      case "slot-gems": return <SlotMachine theme="gems" onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
+      case "slot-egypt": return <SlotMachine theme="egypt" onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
+      case "mahjong": return <MahjongGame onGameEnd={handleGameEnd} />;
       default: return (
         <Card className="p-8 text-center">
           <h3 className="font-display text-xl font-bold mb-2">Em Breve!</h3>

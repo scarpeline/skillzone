@@ -24,6 +24,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Onboarding from "./pages/Onboarding";
 import Campaigns from "./pages/Campaigns";
 
+import TournamentLobby from "./pages/TournamentLobby";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -39,6 +41,7 @@ const App = () => (
             <Route path="/games/:gameId" element={<Games />} />
             <Route path="/games/:gameId/play" element={<GamePlay />} />
             <Route path="/tournaments" element={<Tournaments />} />
+            <Route path="/tournaments/:tournamentId" element={<TournamentLobby />} />
             <Route path="/rankings" element={<Rankings />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
