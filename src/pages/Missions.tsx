@@ -7,34 +7,34 @@ import { AchievementCard } from "@/components/gamification/AchievementCard";
 import { StreakDisplay } from "@/components/gamification/StreakDisplay";
 import { XpProgressBar } from "@/components/gamification/XpProgressBar";
 import { CurrencyDisplay } from "@/components/gamification/CurrencyDisplay";
-import { 
-  generateDailyMissions, 
-  generateWeeklyMissions, 
-  DEFAULT_ACHIEVEMENTS,
-  PlayerCurrency 
-} from "@/lib/gamification";
+import { generateDailyMissions, generateWeeklyMissions, DEFAULT_ACHIEVEMENTS, PlayerCurrency } from "@/lib/gamification";
 import { Target, Trophy, Flame, Gift, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-// Mock data
-const playerCurrency: PlayerCurrency = { xp: 2450, tokens: 180, tickets: 3 };
-const playerXp = 2450;
-const dailyMissions = generateDailyMissions();
-const weeklyMissions = generateWeeklyMissions();
-
-const achievements = DEFAULT_ACHIEVEMENTS.map((a, i) => ({
-  ...a,
-  progress: i < 5 ? a.requirement : Math.floor(a.requirement * 0.6),
-  completed: i < 5,
-  unlockedAt: i < 5 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
-}));
+import { useAuth } from "@/contexts/AuthContext";
 
 const Missions = () => {
+  const { profile } = useAuth();
+
+  const playerCurrency: PlayerCurrency = {
+    xp: profile?.xp ?? 0,
+    tokens: profile?.tokens ?? 0,
+    tickets: profile?.tickets ?? 0,
+  };
+  const playerXp = profile?.xp ?? 0;
+  const currentStreak = profile?.current_streak ?? 0;
+  const longestStreak = profile?.longest_streak ?? 0;
+
+  const dailyMissions = generateDailyMissions();
+  const weeklyMissions = generateWeeklyMissions();
+  const achievements = DEFAULT_ACHIEVEMENTS.map((a, i) => ({
+    ...a,
+    progress: i < 4 ? a.requirement : Math.floor(a.requirement * 0.4),
+    completed: i < 4,
+    unlockedAt: i < 4 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
+  }));
+
   const handleClaimMission = (missionId: string) => {
-    toast({
-      title: "Missão Resgatada!",
-      description: "Sua recompensa foi adicionada à sua conta.",
-    });
+    toast({ title: "Missão Resgatada!", description: "Sua recompensa foi adicionada à sua conta." });
   };
 
   return (
@@ -93,7 +93,7 @@ const Missions = () => {
           {[
             { icon: Target, label: "Missões Ativas", value: dailyMissions.length + weeklyMissions.length, color: "text-primary" },
             { icon: Trophy, label: "Conquistas", value: `${achievements.filter(a => a.completed).length}/${achievements.length}`, color: "text-amber-400" },
-            { icon: Flame, label: "Sequência", value: "12 dias", color: "text-orange-500" },
+            { icon: Flame, label: "Sequência", value: `${currentStreak} dias`, color: "text-orange-500" },
             { icon: Gift, label: "Recompensas", value: "3 pendentes", color: "text-success" },
           ].map((stat, index) => {
             const Icon = stat.icon;
@@ -116,11 +116,7 @@ const Missions = () => {
           transition={{ delay: 0.5 }}
           className="mb-8"
         >
-          <StreakDisplay 
-            currentStreak={12} 
-            longestStreak={23} 
-            todayPlayed={true} 
-          />
+          <StreakDisplay currentStreak={currentStreak} longestStreak={longestStreak} todayPlayed={currentStreak > 0} />
         </motion.div>
 
         {/* Tabs */}

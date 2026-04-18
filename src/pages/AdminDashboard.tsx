@@ -16,8 +16,207 @@ import {
   Users, DollarSign, TrendingUp, Trophy, Crown, Activity, Shield,
   Settings, CreditCard, RefreshCw, AlertTriangle, CheckCircle2,
   Loader2, Ban, UserCheck, Search, ArrowUpRight, ArrowDownRight,
-  Zap, Globe, Lock, Server,
+  Zap, Globe, Lock, Server, Plus, Calendar, Edit, Trash2,
 } from "lucide-react";
+
+// ── TournamentManager ─────────────────────────────────────────
+const ALL_GAMES_ADMIN = [
+  { id: "slot-tiger", label: "🐯 Tigrinho" }, { id: "gates-of-olympus", label: "⚡ Gates of Olympus" },
+  { id: "fortune-ox", label: "🐂 Fortune Ox" }, { id: "slot-fruits", label: "🍒 Frutas da Sorte" },
+  { id: "slot-gems", label: "💎 Gemas Mágicas" }, { id: "slot-egypt", label: "🦅 Faraó do Egito" },
+  { id: "crash", label: "✈️ Crash" }, { id: "mines", label: "💣 Mines" }, { id: "plinko", label: "🎯 Plinko" },
+  { id: "chess", label: "♛ Xadrez" }, { id: "checkers", label: "◉ Damas" }, { id: "quiz", label: "❓ Quiz" },
+  { id: "sudoku", label: "⊞ Sudoku" }, { id: "memory", label: "🎴 Memory" }, { id: "mahjong", label: "🀄 Mahjong" },
+];
+
+const GAME_ICONS: Record<string, string> = {
+  "slot-tiger":"🐯","gates-of-olympus":"⚡","fortune-ox":"🐂","slot-fruits":"🍒","slot-gems":"💎",
+  "slot-egypt":"🦅","crash":"✈️","mines":"💣","plinko":"🎯","chess":"♛","checkers":"◉",
+  "quiz":"❓","sudoku":"⊞","memory":"🎴","mahjong":"🀄",
+};
+
+function TournamentManager({ userId }: { userId?: string }) {
+  const { toast } = useToast();
+  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    name: "", description: "", game_id: "slot-tiger",
+    entry_fee: 50, max_players: 100, guaranteed_prize: 3000,
+    rebuy_allowed: true, rebuy_fee: 30, max_rebuys: 2,
+    starts_at: new Date(Date.now() + 2 * 3600000).toISOString().slice(0, 16),
+    winners: 5,
+    dist: [40, 25, 15, 10, 10],
+  });
+
+  useEffect(() => { fetchTournaments(); }, []);
+
+  const fetchTournaments = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("tournaments").select("*").order("starts_at", { ascending: false }).limit(20);
+    if (data) setTournaments(data);
+    setLoading(false);
+  };
+
+  const handleCreate = async () => {
+    setSaving(true);
+    const dist = form.dist.slice(0, form.winners);
+    const total = dist.reduce((a, b) => a + b, 0);
+    if (total !== 100) { toast({ title: `Distribuição deve somar 100% (atual: ${total}%)`, variant: "destructive" }); setSaving(false); return; }
+
+    const prizeDistribution = dist.map((percent, i) => ({
+      position: i + 1,
+      percent,
+      label: i === 0 ? "🥇 1º Lugar" : i === 1 ? "🥈 2º Lugar" : i === 2 ? "🥉 3º Lugar" : `${i + 1}º Lugar`,
+    }));
+
+    const { error } = await supabase.from("tournaments").insert({
+      name: form.name, description: form.description,
+      game_id: form.game_id, game_icon: GAME_ICONS[form.game_id] || "🎮",
+      entry_fee: form.entry_fee, max_players: form.max_players,
+      guaranteed_prize: form.guaranteed_prize,
+      rebuy_allowed: form.rebuy_allowed, rebuy_fee: form.rebuy_fee, max_rebuys: form.max_rebuys,
+      starts_at: new Date(form.starts_at).toISOString(),
+      prize_distribution: prizeDistribution,
+      status: "registering", created_by: userId,
+    });
+
+    if (error) { toast({ title: error.message, variant: "destructive" }); }
+    else { toast({ title: "Torneio criado! ✅" }); setShowForm(false); fetchTournaments(); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Cancelar este torneio?")) return;
+    await supabase.from("tournaments").update({ status: "cancelled" }).eq("id", id);
+    fetchTournaments();
+    toast({ title: "Torneio cancelado" });
+  };
+
+  const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-xl font-bold flex items-center gap-2"><Trophy className="w-5 h-5 text-accent" />Gerenciar Torneios</h2>
+        <Button onClick={() => setShowForm(!showForm)} variant="hero" size="sm">
+          <Plus className="w-4 h-4 mr-1" />{showForm ? "Cancelar" : "Novo Torneio"}
+        </Button>
+      </div>
+
+      {/* Formulário de criação */}
+      {showForm && (
+        <Card className="border-primary/30">
+          <CardHeader><CardTitle className="text-base">Criar Novo Torneio</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1"><Label className="text-xs">Nome *</Label>
+                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Torneio Tigrinho Semanal" /></div>
+              <div className="space-y-1"><Label className="text-xs">Jogo *</Label>
+                <select className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={form.game_id} onChange={e => setForm(f => ({ ...f, game_id: e.target.value }))}>
+                  {ALL_GAMES_ADMIN.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+                </select></div>
+              <div className="space-y-1"><Label className="text-xs">Taxa de Inscrição (R$)</Label>
+                <Input type="number" value={form.entry_fee} onChange={e => setForm(f => ({ ...f, entry_fee: Number(e.target.value) }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Máx. Jogadores</Label>
+                <Input type="number" value={form.max_players} onChange={e => setForm(f => ({ ...f, max_players: Number(e.target.value) }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Prêmio Garantido (R$)</Label>
+                <Input type="number" value={form.guaranteed_prize} onChange={e => setForm(f => ({ ...f, guaranteed_prize: Number(e.target.value) }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Início</Label>
+                <Input type="datetime-local" value={form.starts_at} onChange={e => setForm(f => ({ ...f, starts_at: e.target.value }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Nº de Vencedores (3-5)</Label>
+                <Input type="number" min={3} max={5} value={form.winners}
+                  onChange={e => setForm(f => ({ ...f, winners: Number(e.target.value) }))} /></div>
+              <div className="space-y-1"><Label className="text-xs">Taxa de Recompra (R$)</Label>
+                <Input type="number" value={form.rebuy_fee} onChange={e => setForm(f => ({ ...f, rebuy_fee: Number(e.target.value) }))} /></div>
+            </div>
+
+            {/* Distribuição de prêmios */}
+            <div>
+              <Label className="text-xs mb-2 block">Distribuição de Prêmios (deve somar 100%)</Label>
+              <div className="flex gap-2 flex-wrap">
+                {Array.from({ length: form.winners }, (_, i) => (
+                  <div key={i} className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground w-12">{i + 1}º lugar</span>
+                    <Input type="number" className="w-16 h-8 text-xs" value={form.dist[i] ?? 0}
+                      onChange={e => {
+                        const d = [...form.dist];
+                        d[i] = Number(e.target.value);
+                        setForm(f => ({ ...f, dist: d }));
+                      }} />
+                    <span className="text-xs">%</span>
+                  </div>
+                ))}
+                <div className={`flex items-center text-xs font-bold ${form.dist.slice(0, form.winners).reduce((a, b) => a + b, 0) === 100 ? "text-green-400" : "text-red-400"}`}>
+                  = {form.dist.slice(0, form.winners).reduce((a, b) => a + b, 0)}%
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1"><Label className="text-xs">Descrição</Label>
+              <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descrição do torneio..." /></div>
+
+            <Button onClick={handleCreate} disabled={saving || !form.name} className="w-full">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              Criar Torneio
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lista de torneios */}
+      <Card>
+        <CardContent className="pt-4">
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground text-xs">
+                    <th className="text-left py-2 px-2">Torneio</th>
+                    <th className="text-left py-2 px-2">Jogo</th>
+                    <th className="text-right py-2 px-2">Taxa</th>
+                    <th className="text-right py-2 px-2">Prêmio</th>
+                    <th className="text-center py-2 px-2">Status</th>
+                    <th className="text-center py-2 px-2">Início</th>
+                    <th className="text-center py-2 px-2">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tournaments.map(t => (
+                    <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30">
+                      <td className="py-2 px-2 font-medium max-w-[180px] truncate">{t.name}</td>
+                      <td className="py-2 px-2">{t.game_icon} {t.game_id}</td>
+                      <td className="py-2 px-2 text-right font-mono">{formatCurrency(t.entry_fee)}</td>
+                      <td className="py-2 px-2 text-right font-mono text-yellow-400">{formatCurrency(t.guaranteed_prize)}</td>
+                      <td className="py-2 px-2 text-center">
+                        <Badge variant={t.status === "registering" ? "default" : t.status === "live" ? "destructive" : "secondary"} className="text-xs">
+                          {t.status}
+                        </Badge>
+                      </td>
+                      <td className="py-2 px-2 text-center text-xs text-muted-foreground">
+                        {new Date(t.starts_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(t.id)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {tournaments.length === 0 && <p className="text-center text-muted-foreground py-8">Nenhum torneio criado ainda.</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell,
@@ -186,6 +385,7 @@ const AdminDashboard = () => {
           <TabsList className="w-full max-w-3xl mb-6 grid grid-cols-5 h-auto">
             <TabsTrigger value="gateways" className="text-xs md:text-sm py-2"><CreditCard className="w-3 h-3 mr-1 hidden md:inline" /> Gateways</TabsTrigger>
             <TabsTrigger value="users" className="text-xs md:text-sm py-2"><Users className="w-3 h-3 mr-1 hidden md:inline" /> Usuários</TabsTrigger>
+            <TabsTrigger value="tournaments" className="text-xs md:text-sm py-2"><Trophy className="w-3 h-3 mr-1 hidden md:inline" /> Torneios</TabsTrigger>
             <TabsTrigger value="finance" className="text-xs md:text-sm py-2"><DollarSign className="w-3 h-3 mr-1 hidden md:inline" /> Financeiro</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs md:text-sm py-2"><Settings className="w-3 h-3 mr-1 hidden md:inline" /> Sistema</TabsTrigger>
             <TabsTrigger value="security" className="text-xs md:text-sm py-2"><Shield className="w-3 h-3 mr-1 hidden md:inline" /> Segurança</TabsTrigger>
@@ -309,6 +509,11 @@ const AdminDashboard = () => {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* TOURNAMENTS TAB */}
+          <TabsContent value="tournaments">
+            <TournamentManager userId={user?.id} />
           </TabsContent>
 
           {/* USERS TAB */}
