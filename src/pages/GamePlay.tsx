@@ -13,6 +13,8 @@ import { MahjongGame } from "@/components/games/MahjongGame";
 import { CrashGame } from "@/components/games/CrashGame";
 import { MinesGame } from "@/components/games/MinesGame";
 import { PlinkoGame } from "@/components/games/PlinkoGame";
+import { FortuneOxSlot } from "@/components/games/FortuneOxSlot";
+import { GatesOfOlympus } from "@/components/games/GatesOfOlympus";
 import type { SlotTheme } from "@/components/games/SlotMachine";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +34,7 @@ const GAME_NAMES: Record<string, string> = {
   "slot-gems": "Gemas Mágicas 💎", "slot-egypt": "Faraó do Egito 🦅",
   mahjong: "Mahjong Solitaire 🀄",
   crash: "Crash ✈️", mines: "Mines 💣", plinko: "Plinko 🎯",
+  "fortune-ox": "Fortune Ox 🐂", "gates-of-olympus": "Gates of Olympus ⚡",
 };
 
 type StakeMode = "free" | "credits" | "cash";
@@ -177,6 +180,8 @@ export default function GamePlay() {
       case "crash": return <CrashGame onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
       case "mines": return <MinesGame onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
       case "plinko": return <PlinkoGame onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
+      case "fortune-ox": return <FortuneOxSlot onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
+      case "gates-of-olympus": return <GatesOfOlympus onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
       default: return (
         <Card className="p-8 text-center">
           <h3 className="font-display text-xl font-bold mb-2">Em Breve!</h3>
