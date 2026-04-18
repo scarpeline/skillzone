@@ -10,6 +10,9 @@ import { ChessGame } from "@/components/games/ChessGame";
 import { GoGame } from "@/components/games/GoGame";
 import { SlotMachine } from "@/components/games/SlotMachine";
 import { MahjongGame } from "@/components/games/MahjongGame";
+import { CrashGame } from "@/components/games/CrashGame";
+import { MinesGame } from "@/components/games/MinesGame";
+import { PlinkoGame } from "@/components/games/PlinkoGame";
 import type { SlotTheme } from "@/components/games/SlotMachine";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +31,7 @@ const GAME_NAMES: Record<string, string> = {
   "slot-tiger": "Tigrinho 🐯", "slot-fruits": "Frutas da Sorte 🍒",
   "slot-gems": "Gemas Mágicas 💎", "slot-egypt": "Faraó do Egito 🦅",
   mahjong: "Mahjong Solitaire 🀄",
+  crash: "Crash ✈️", mines: "Mines 💣", plinko: "Plinko 🎯",
 };
 
 type StakeMode = "free" | "credits" | "cash";
@@ -170,6 +174,9 @@ export default function GamePlay() {
       case "slot-gems": return <SlotMachine theme="gems" onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
       case "slot-egypt": return <SlotMachine theme="egypt" onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
       case "mahjong": return <MahjongGame onGameEnd={handleGameEnd} />;
+      case "crash": return <CrashGame onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
+      case "mines": return <MinesGame onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
+      case "plinko": return <PlinkoGame onGameEnd={handleGameEnd} initialBalance={profile?.credits_balance ?? 1000} />;
       default: return (
         <Card className="p-8 text-center">
           <h3 className="font-display text-xl font-bold mb-2">Em Breve!</h3>
