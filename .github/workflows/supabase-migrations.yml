@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'supabase/migrations/**'
-      - 'supabase/config.toml'
   workflow_dispatch:
 
 jobs:
@@ -23,10 +22,13 @@ jobs:
         with:
           version: latest
 
-      - name: Executar migrations no Supabase
-        run: |
-          supabase db push \
-            --project-ref gpeskjhreqbbdvninkvh \
-            --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+      - name: Link projeto Supabase
+        run: supabase link --project-ref gpeskjhreqbbdvninkvh
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Executar migrations
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
