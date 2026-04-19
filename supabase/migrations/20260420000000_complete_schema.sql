@@ -4,10 +4,18 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- ============================================================
+-- FUNÇÕES BASE (devem vir antes das tabelas que as referenciam)
+-- ============================================================
+
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$;
+
+-- ============================================================
+-- ROLES
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.user_roles (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -17,14 +25,18 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
   UNIQUE(user_id, role)
 );
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users see own roles" ON public.user_roles FOR SELECT TO authenticated USING (user_id = auth.uid());
 
 CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
   SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);
 $$;
 
-CREATE POLICY "Admins manage roles" ON public.user_roles FOR ALL TO authenticated USING (public.has_role(auth.uid(),'admin'));
+CREATE POLICY "Users see own roles"  ON public.user_roles FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "Admins manage roles"  ON public.user_roles FOR ALL    TO authenticated USING (public.has_role(auth.uid(),'admin'));
+
+-- ============================================================
+-- PROFILES
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.profiles (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -78,6 +90,10 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- ============================================================
+-- TRANSACTIONS
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS public.transactions (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -94,6 +110,10 @@ CREATE POLICY "Own transactions"       ON public.transactions FOR SELECT TO auth
 CREATE POLICY "Insert own transaction" ON public.transactions FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 CREATE POLICY "Admins see all tx"      ON public.transactions FOR ALL    TO authenticated USING (public.has_role(auth.uid(),'admin'));
 CREATE INDEX idx_transactions_user ON public.transactions(user_id, created_at DESC);
+
+-- ============================================================
+-- MATCHES
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.matches (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -119,6 +139,10 @@ CREATE POLICY "Update own match"        ON public.matches FOR UPDATE TO authenti
 CREATE POLICY "Admins see all matches"  ON public.matches FOR ALL    TO authenticated USING (public.has_role(auth.uid(),'admin'));
 CREATE INDEX idx_matches_player1 ON public.matches(player1_id, created_at DESC);
 CREATE INDEX idx_matches_game    ON public.matches(game_id, created_at DESC);
+
+-- ============================================================
+-- TOURNAMENTS
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.tournaments (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -174,6 +198,10 @@ FROM public.tournament_registrations
 WHERE status NOT IN ('refunded')
 GROUP BY tournament_id;
 
+-- ============================================================
+-- RANKINGS / ACHIEVEMENTS / NOTIFICATIONS / AFFILIATES
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS public.rankings (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -228,6 +256,10 @@ CREATE TABLE IF NOT EXISTS public.affiliates (
 ALTER TABLE public.affiliates ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Own affiliates" ON public.affiliates FOR SELECT TO authenticated USING (referrer_id = auth.uid());
 
+-- ============================================================
+-- GAME SESSIONS
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS public.game_sessions (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -246,24 +278,56 @@ ALTER TABLE public.game_sessions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Own sessions" ON public.game_sessions FOR ALL TO authenticated USING (user_id = auth.uid());
 CREATE INDEX idx_sessions_user ON public.game_sessions(user_id, started_at DESC);
 
+-- ============================================================
+-- SYSTEM SETTINGS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  key        text UNIQUE NOT NULL,
+  value      jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid REFERENCES auth.users(id)
+);
+ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage settings"          ON public.system_settings FOR ALL    TO authenticated USING (public.has_role(auth.uid(),'admin')) WITH CHECK (public.has_role(auth.uid(),'admin'));
+CREATE POLICY "Public can read payment gateway status" ON public.system_settings FOR SELECT TO authenticated USING (key IN ('payment_gateway','platform_fees','min_withdraw'));
+
+INSERT INTO public.system_settings (key, value) VALUES
+  ('payment_gateway',  '{"primary":"asaas","secondary":"stripe","tertiary":"pix_manual","asaas_enabled":true,"stripe_enabled":true,"pix_manual_enabled":true,"auto_fallback":true}'::jsonb),
+  ('platform_fees',    '{"withdraw_fee_percent":0,"deposit_fee_percent":0,"min_withdraw":10,"max_withdraw":50000,"min_deposit":5}'::jsonb),
+  ('platform_status',  '{"maintenance":false,"registration_open":true,"competitions_enabled":true,"withdrawals_enabled":true}'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
+-- ============================================================
+-- FUNÇÕES DE NEGÓCIO
+-- ============================================================
+
 CREATE OR REPLACE FUNCTION public.record_match_result(
-  p_game_id text, p_player_id uuid, p_score integer,
-  p_stake numeric, p_prize numeric,
-  p_wallet text DEFAULT 'credits', p_won boolean DEFAULT true
+  p_game_id  text,
+  p_player_id uuid,
+  p_score    integer,
+  p_stake    numeric,
+  p_prize    numeric,
+  p_wallet   text    DEFAULT 'credits',
+  p_won      boolean DEFAULT true
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE _xp_gain integer := 25 + CASE WHEN p_stake > 0 THEN 15 ELSE 0 END;
+DECLARE
+  _xp_gain integer := 25 + CASE WHEN p_stake > 0 THEN 15 ELSE 0 END;
 BEGIN
   INSERT INTO public.matches (game_id, player1_id, status, player1_score, winner_id, stake_amount, prize_amount, wallet, started_at, ended_at)
   VALUES (p_game_id, p_player_id, 'completed', p_score, CASE WHEN p_won THEN p_player_id ELSE NULL END, p_stake, p_prize, p_wallet, now(), now());
+
   UPDATE public.profiles SET
     total_matches   = total_matches + 1,
     total_wins      = total_wins + CASE WHEN p_won THEN 1 ELSE 0 END,
     xp              = xp + _xp_gain,
     last_played_at  = now(),
-    cash_balance    = CASE WHEN p_wallet = 'cash'    THEN cash_balance    + p_prize - p_stake ELSE cash_balance    END,
+    cash_balance    = CASE WHEN p_wallet = 'cash'    THEN cash_balance    + p_prize - p_stake          ELSE cash_balance    END,
     credits_balance = CASE WHEN p_wallet = 'credits' THEN credits_balance + p_prize::integer - p_stake::integer ELSE credits_balance END,
     total_earnings  = CASE WHEN p_wallet = 'cash' AND p_prize > 0 THEN total_earnings + p_prize ELSE total_earnings END
   WHERE user_id = p_player_id;
+
   IF p_prize > 0 THEN
     INSERT INTO public.transactions (user_id, type, wallet, amount, description, reference)
     VALUES (p_player_id, 'prize', p_wallet, p_prize, 'Prêmio - ' || p_game_id, p_game_id);
@@ -281,34 +345,42 @@ BEGIN
   SELECT * INTO _t FROM public.tournaments WHERE id = p_tournament_id;
   IF NOT FOUND THEN RETURN '{"error":"Torneio não encontrado"}'::jsonb; END IF;
   IF _t.status NOT IN ('registering','draft') THEN RETURN '{"error":"Inscrições encerradas"}'::jsonb; END IF;
+
   SELECT * INTO _profile FROM public.profiles WHERE user_id = p_user_id;
   IF NOT FOUND THEN RETURN '{"error":"Perfil não encontrado"}'::jsonb; END IF;
   IF _t.entry_wallet = 'cash'    AND _profile.cash_balance    < _t.entry_fee THEN RETURN '{"error":"Saldo insuficiente"}'::jsonb; END IF;
   IF _t.entry_wallet = 'credits' AND _profile.credits_balance < _t.entry_fee THEN RETURN '{"error":"Créditos insuficientes"}'::jsonb; END IF;
+
   SELECT COUNT(*) INTO _count FROM public.tournament_registrations WHERE tournament_id = p_tournament_id AND status != 'refunded';
   IF _count >= _t.max_players THEN RETURN '{"error":"Torneio lotado"}'::jsonb; END IF;
+
   INSERT INTO public.tournament_registrations (tournament_id, user_id) VALUES (p_tournament_id, p_user_id) ON CONFLICT DO NOTHING;
+
   IF _t.entry_fee > 0 THEN
     UPDATE public.profiles SET
-      cash_balance    = CASE WHEN _t.entry_wallet = 'cash'    THEN cash_balance    - _t.entry_fee ELSE cash_balance    END,
+      cash_balance    = CASE WHEN _t.entry_wallet = 'cash'    THEN cash_balance    - _t.entry_fee          ELSE cash_balance    END,
       credits_balance = CASE WHEN _t.entry_wallet = 'credits' THEN credits_balance - _t.entry_fee::integer ELSE credits_balance END
     WHERE user_id = p_user_id;
+
     INSERT INTO public.transactions (user_id, type, wallet, amount, description, reference)
     VALUES (p_user_id, 'entry', _t.entry_wallet, -_t.entry_fee, 'Inscrição: ' || _t.name, p_tournament_id::text);
   END IF;
+
   RETURN '{"success":true}'::jsonb;
 END;
 $$;
 
+-- ============================================================
+-- DADOS INICIAIS
+-- ============================================================
+
 INSERT INTO public.tournaments (name, description, game_id, game_icon, entry_fee, max_players, guaranteed_prize, starts_at, status) VALUES
-  ('Torneio Tigrinho Semanal',      'Os 5 melhores dividem o prêmio!', 'slot-tiger',       '🐯', 50,  100, 3000,  now() + interval '2 hours',   'registering'),
-  ('Gates of Olympus Championship', 'Cluster pays ao vivo!',           'gates-of-olympus', '⚡', 100, 50,  8000,  now() + interval '4 hours',   'registering'),
-  ('Crash Masters',                 'Saque antes do crash!',           'crash',            '✈️', 25,  200, 5000,  now() + interval '1 hour',    'registering'),
-  ('Mines Tournament',              'Evite as minas e ganhe!',         'mines',            '💣', 30,  150, 4000,  now() + interval '3 hours',   'registering'),
-  ('Plinko Grand Prix',             'Bolinha de ouro!',                'plinko',           '🎯', 20,  300, 6000,  now() + interval '30 minutes','registering'),
-  ('Fortune Ox Free Spins Cup',     'Free spins valem mais!',          'fortune-ox',       '🐂', 75,  80,  10000, now() + interval '6 hours',   'registering'),
-  ('Campeonato de Xadrez',          'Estratégia pura!',                'chess',            '♛', 50,  128, 25000, now() + interval '1 day',     'registering'),
-  ('Quiz Night Champions',          'Conhecimento é poder!',           'quiz',             '❓', 25,  200, 8000,  now() + interval '5 hours',   'registering')
+  ('Torneio Tigrinho Semanal',      'Os 5 melhores dividem o prêmio!', 'slot-tiger',       '🐯', 50,  100, 3000,  now() + interval '2 hours',    'registering'),
+  ('Gates of Olympus Championship', 'Cluster pays ao vivo!',           'gates-of-olympus', '⚡', 100, 50,  8000,  now() + interval '4 hours',    'registering'),
+  ('Crash Masters',                 'Saque antes do crash!',           'crash',            '✈️', 25,  200, 5000,  now() + interval '1 hour',     'registering'),
+  ('Mines Tournament',              'Evite as minas e ganhe!',         'mines',            '💣', 30,  150, 4000,  now() + interval '3 hours',    'registering'),
+  ('Plinko Grand Prix',             'Bolinha de ouro!',                'plinko',           '🎯', 20,  300, 6000,  now() + interval '30 minutes', 'registering'),
+  ('Fortune Ox Free Spins Cup',     'Free spins valem mais!',          'fortune-ox',       '🐂', 75,  80,  10000, now() + interval '6 hours',    'registering'),
+  ('Campeonato de Xadrez',          'Estratégia pura!',                'chess',            '♛', 50,  128, 25000, now() + interval '1 day',      'registering'),
+  ('Quiz Night Champions',          'Conhecimento é poder!',           'quiz',             '❓', 25,  200, 8000,  now() + interval '5 hours',    'registering')
 ON CONFLICT DO NOTHING;
-- -   t r i g g e r  
- 
