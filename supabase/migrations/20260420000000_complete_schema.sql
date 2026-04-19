@@ -310,3 +310,5 @@ INSERT INTO public.tournaments (name, description, game_id, game_icon, entry_fee
   ('Campeonato de Xadrez',          'Estratégia pura!',                'chess',            '♛', 50,  128, 25000, now() + interval '1 day',     'registering'),
   ('Quiz Night Champions',          'Conhecimento é poder!',           'quiz',             '❓', 25,  200, 8000,  now() + interval '5 hours',   'registering')
 ON CONFLICT DO NOTHING;
+- -   t r i g g e r  
+ 
