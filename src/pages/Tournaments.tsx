@@ -204,7 +204,9 @@ const Tournaments = () => {
   );
 };
 
-export default Tournaments;const tournaments = [
+export default Tournaments;
+
+const tournaments = [
   {
     id: 1,
     name: "Campeonato Brasileiro de Xadrez",
