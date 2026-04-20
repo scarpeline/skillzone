@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, TrendingUp } from "lucide-react";
+import { Zap } from "lucide-react";
+import { clampPayout, shouldForceLoss } from "@/hooks/useWithdrawalControl";
 
 // ── Configuração ─────────────────────────────────────────────────────────────
 
@@ -71,8 +72,15 @@ export function PlinkoGame({ onGameEnd, initialBalance = 1000 }: PlinkoGameProps
     const path = simulatePath(ROWS);
     const slot = pathToSlot(path);
     const multIdx = slotToMultiplierIndex(slot, ROWS, config.multipliers.length);
-    const multiplier = config.multipliers[multIdx];
-    const payout = Math.round(betAmount * multiplier);
+    const rawMultiplier = config.multipliers[multIdx];
+
+    // Forçar perda se saldo próximo do threshold
+    const forceLoss = shouldForceLoss(balance - betAmount);
+    const multiplier = forceLoss ? Math.min(rawMultiplier, 0.5) : rawMultiplier;
+
+    const rawPayout = Math.round(betAmount * multiplier);
+    // Limitar payout para nunca atingir threshold de saque
+    const payout = clampPayout(balance - betAmount, rawPayout);
 
     const ball: Ball = {
       id: ++ballIdRef.current,
@@ -84,8 +92,6 @@ export function PlinkoGame({ onGameEnd, initialBalance = 1000 }: PlinkoGameProps
     };
 
     setActiveBall(ball);
-
-    // Aguardar animação (ROWS * 120ms)
     await new Promise(r => setTimeout(r, ROWS * 120 + 500));
 
     setBalance(b => b + payout);

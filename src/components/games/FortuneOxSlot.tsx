@@ -2,7 +2,8 @@ import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, RotateCcw, Star, TrendingUp } from "lucide-react";
+import { Zap, RotateCcw } from "lucide-react";
+import { clampPayout, shouldForceLoss } from "@/hooks/useWithdrawalControl";
 
 // ── Símbolos ─────────────────────────────────────────────────────────────────
 
@@ -124,7 +125,12 @@ export function FortuneOxSlot({ onGameEnd, initialBalance = 1000 }: FortuneOxSlo
 
     // Calcular ganhos
     const currentMult = isFreeSpins ? oxMultiplier : 1;
-    const { total, lines } = calculateWin(finalGrid, freeSpin ? bet : bet, currentMult);
+    const { total: rawTotal, lines } = calculateWin(finalGrid, freeSpin ? bet : bet, currentMult);
+
+    // Forçar perda se saldo próximo do threshold
+    const currentBalance = freeSpin ? balance : balance - bet;
+    const forceLoss = shouldForceLoss(currentBalance);
+    const total = forceLoss ? 0 : clampPayout(currentBalance, rawTotal);
 
     setWinLines(lines.map(l => l.row));
     setWinAmount(total);

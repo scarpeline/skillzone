@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, RotateCcw } from "lucide-react";
+import { clampPayout, shouldForceLoss } from "@/hooks/useWithdrawalControl";
 
 // ── Símbolos ─────────────────────────────────────────────────────────────────
 
@@ -134,10 +135,13 @@ export function GatesOfOlympus({ onGameEnd, initialBalance = 1000 }: GatesOfOlym
       });
     });
 
+    // Controle: limitar ganho para nunca atingir threshold de saque
+    const safeRoundWin = shouldForceLoss(balance) ? 0 : clampPayout(balance, roundWin);
+
     setWinCells(newWinCells);
-    setWinAmount(w => (w ?? 0) + roundWin);
-    setBalance(b => b + roundWin);
-    setTotalWon(t => t + roundWin);
+    setWinAmount(w => (w ?? 0) + safeRoundWin);
+    setBalance(b => b + safeRoundWin);
+    setTotalWon(t => t + safeRoundWin);
 
     // Mostrar multiplicadores caindo (Zeus)
     const zeusPositions: { value: number; x: number; y: number; id: number }[] = [];
