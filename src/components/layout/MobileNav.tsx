@@ -4,6 +4,7 @@ import { Gamepad2, Trophy, Target, Wallet, User } from "lucide-react";
 
 const navItems = [
   { path: "/games", label: "Jogos", icon: Gamepad2 },
+  { path: "/sports", label: "Esportes", icon: Trophy },
   { path: "/tournaments", label: "Torneios", icon: Trophy },
   { path: "/missions", label: "Missões", icon: Target },
   { path: "/wallet", label: "Carteira", icon: Wallet },

@@ -23,8 +23,9 @@ import NotificationSettings from "./pages/NotificationSettings";
 import AdminDashboard from "./pages/AdminDashboard";
 import Onboarding from "./pages/Onboarding";
 import Campaigns from "./pages/Campaigns";
-
+import Sports from "./pages/Sports";
 import TournamentLobby from "./pages/TournamentLobby";
+import { LiveChat } from "./components/LiveChat";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/games/:gameId/play" element={<GamePlay />} />
             <Route path="/tournaments" element={<Tournaments />} />
             <Route path="/tournaments/:tournamentId" element={<TournamentLobby />} />
+            <Route path="/sports" element={<Sports />} />
             <Route path="/rankings" element={<Rankings />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
@@ -60,6 +62,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <LiveChat />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

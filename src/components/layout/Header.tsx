@@ -3,22 +3,15 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { DepositModal } from "@/components/DepositModal";
 import {
-  Gamepad2,
-  Trophy,
-  BarChart3,
-  Wallet,
-  User,
-  Menu,
-  X,
-  Users,
-  Target,
-  Crown,
-  LogOut,
+  Gamepad2, Trophy, BarChart3, Wallet, User,
+  Menu, X, Users, Target, Crown, LogOut, Plus, Zap,
 } from "lucide-react";
 
 const navItems = [
   { path: "/games", label: "Jogos", icon: Gamepad2 },
+  { path: "/sports", label: "Esportes", icon: Trophy },
   { path: "/tournaments", label: "Torneios", icon: Trophy },
   { path: "/rankings", label: "Rankings", icon: BarChart3 },
   { path: "/missions", label: "Missões", icon: Target },
@@ -28,6 +21,7 @@ const navItems = [
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const [depositOpen, setDepositOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
@@ -40,6 +34,7 @@ export function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
+      <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} />
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           <Link to="/" className="flex items-center gap-3">
@@ -71,6 +66,9 @@ export function Header() {
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <>
+                <Button variant="hero" size="sm" onClick={() => setDepositOpen(true)}>
+                  <Plus className="w-4 h-4" /> Depositar
+                </Button>
                 <Link to="/wallet">
                   <Button variant="outline" size="sm">
                     <Wallet className="w-4 h-4" /> Carteira
