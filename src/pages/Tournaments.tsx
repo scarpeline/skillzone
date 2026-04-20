@@ -206,22 +206,6 @@ const Tournaments = () => {
 
 export default Tournaments;
 
-const tournaments = [
-  {
-    id: 1,
-    name: "Campeonato Brasileiro de Xadrez",
-    game: "Xadrez",
-    gameIcon: "♛",
-    prizePool: 25000,
-    currentPool: 18500,
-    players: 128,
-    maxPlayers: 256,
-    startTime: "2026-01-23T22:00:00",
-    status: "registering",
-    entryFee: 50,
-    type: "eliminatório",
-    featured: true,
-  },
   {
     id: 2,
     name: "Torneio Relâmpago de Damas",
