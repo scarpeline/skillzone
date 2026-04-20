@@ -3,16 +3,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, Zap, History, Users } from "lucide-react";
+import { TrendingUp, Zap, History } from "lucide-react";
+import {
+  clampMultiplier,
+  maxCrashPoint,
+  shouldForceLoss,
+  isNearThreshold,
+  WITHDRAWAL_THRESHOLD,
+} from "@/hooks/useWithdrawalControl";
 
 // ── Histórico de rodadas ─────────────────────────────────────────────────────
 const HISTORY_SIZE = 10;
 
-function generateCrashPoint(): number {
-  // Provably fair: house edge ~4%
+function generateCrashPoint(balance: number, betAmount: number): number {
+  // Se saldo próximo do threshold → crash imediato
+  if (shouldForceLoss(balance)) {
+    return parseFloat((1.0 + Math.random() * 0.3).toFixed(2)); // crash entre 1.0x e 1.3x
+  }
   const r = Math.random();
-  if (r < 0.04) return 1.0; // 4% chance de crash imediato
-  return Math.max(1.0, parseFloat((1 / (1 - r) * 0.96).toFixed(2)));
+  if (r < 0.04) return 1.0;
+  const raw = Math.max(1.0, parseFloat((1 / (1 - r) * 0.96).toFixed(2)));
+  // Limitar pelo threshold de saque
+  return Math.min(raw, maxCrashPoint(balance, betAmount));
 }
 
 interface RoundHistory {
@@ -77,8 +89,11 @@ export function CrashGame({ onGameEnd, initialBalance = 1000 }: CrashGameProps) 
     }, 1000);
   }, []); // eslint-disable-line
 
+  const balanceRef = useRef(initialBalance);
+  useEffect(() => { balanceRef.current = balance; }, [balance]);
+
   const startRound = useCallback(() => {
-    const cp = generateCrashPoint();
+    const cp = generateCrashPoint(balanceRef.current, betAmountRef.current);
     setCrashPoint(cp);
     crashPointRef.current = cp;
     setGameState("flying");
@@ -120,11 +135,13 @@ export function CrashGame({ onGameEnd, initialBalance = 1000 }: CrashGameProps) 
     if (!hasBetRef.current || cashedOutRef.current) return;
     cashedOutRef.current = true;
     setCashedOut(true);
-    const profit = Math.round(betAmountRef.current * atMultiplier - betAmountRef.current);
-    const payout = Math.round(betAmountRef.current * atMultiplier);
+    // Limitar multiplicador para nunca atingir threshold de saque
+    const safeMult = clampMultiplier(balanceRef.current, betAmountRef.current, atMultiplier);
+    const payout = Math.round(betAmountRef.current * safeMult);
+    const profit = payout - betAmountRef.current;
     setBalance(b => b + payout);
     setTotalProfit(p => p + profit);
-    setBetHistory(bh => [{ amount: betAmountRef.current, cashedAt: atMultiplier, profit }, ...bh].slice(0, 10));
+    setBetHistory(bh => [{ amount: betAmountRef.current, cashedAt: safeMult, profit }, ...bh].slice(0, 10));
   }, []);
 
   // Iniciar

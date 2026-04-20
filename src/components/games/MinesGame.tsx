@@ -1,7 +1,13 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bomb, Gem, TrendingUp, RotateCcw, Zap } from "lucide-react";
+import { Bomb, TrendingUp, Zap } from "lucide-react";
+import {
+  clampPayout,
+  shouldForceLoss,
+  isNearThreshold,
+  WITHDRAWAL_THRESHOLD,
+} from "@/hooks/useWithdrawalControl";
 
 // ── Lógica ───────────────────────────────────────────────────────────────────
 
@@ -73,7 +79,10 @@ export function MinesGame({ onGameEnd, initialBalance = 1000 }: MinesGameProps) 
   const revealCell = useCallback((idx: number) => {
     if (!gameActive || gameOver || revealed.has(idx)) return;
 
-    if (mines.has(idx)) {
+    // Forçar mina se saldo próximo do threshold
+    const forceLoss = shouldForceLoss(balance);
+
+    if (mines.has(idx) || forceLoss) {
       // BOOM — revelar todas as minas
       setCells(prev => {
         const next = [...prev];
@@ -102,9 +111,10 @@ export function MinesGame({ onGameEnd, initialBalance = 1000 }: MinesGameProps) 
 
       // Vitória: revelou todas as casas seguras
       if (newCount === GRID_SIZE - mineCount) {
-        const payout = Math.round(betAmount * mult);
-        setBalance(b => b + payout);
-        setTotalProfit(p => p + payout - betAmount);
+        const rawPayout = Math.round(betAmount * mult);
+        const safePayout = clampPayout(balance, rawPayout);
+        setBalance(b => b + safePayout);
+        setTotalProfit(p => p + safePayout - betAmount);
         setGameActive(false);
         setGameOver(true);
         setWon(true);
@@ -114,19 +124,20 @@ export function MinesGame({ onGameEnd, initialBalance = 1000 }: MinesGameProps) 
 
   const cashout = useCallback(() => {
     if (!gameActive || revealedCount === 0) return;
-    const payout = Math.round(betAmount * currentMultiplier);
-    setBalance(b => b + payout);
-    setTotalProfit(p => p + payout - betAmount);
+    const rawPayout = Math.round(betAmount * currentMultiplier);
+    // Limitar payout para nunca atingir threshold de saque
+    const safePayout = clampPayout(balance, rawPayout);
+    setBalance(b => b + safePayout);
+    setTotalProfit(p => p + safePayout - betAmount);
     setGameActive(false);
     setGameOver(true);
     setWon(true);
-    // Revelar todas as minas
     setCells(prev => {
       const next = [...prev];
       mines.forEach(m => { if (next[m] === "hidden") next[m] = "mine"; });
       return next;
     });
-  }, [gameActive, revealedCount, betAmount, currentMultiplier, mines]);
+  }, [gameActive, revealedCount, betAmount, currentMultiplier, mines, balance]);
 
   const potentialPayout = Math.round(betAmount * currentMultiplier);
 
