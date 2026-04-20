@@ -32,6 +32,8 @@ const games = [
     avgGameTime: "1-5 min",
     rating: 5.0,
   },
+  {
+    id: "crash",
     name: "Crash",
     description: "O multiplicador sobe sem parar — saque antes do crash! Quanto mais espera, mais ganha... ou perde tudo.",
     players: "45,200",
@@ -69,6 +71,8 @@ const games = [
     avgGameTime: "5-10s",
     rating: 4.7,
   },
+  {
+    id: "tigrinho",
     name: "Tigrinho",
     description: "O famoso slot do Tigrinho! Gire os rolos e combine símbolos para ganhar multiplicadores explosivos.",
     players: "28,900",
@@ -132,6 +136,9 @@ const games = [
     avgGameTime: "3-8 min",
     rating: 4.8,
   },
+  {
+    id: "chess",
+    name: "Xadrez",
     description: "O clássico jogo de estratégia que desafia mentes há séculos. Domine a arte do xeque-mate.",
     players: "12,450",
     tournaments: "45",
