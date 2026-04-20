@@ -201,25 +201,7 @@ const Rankings = () => {
   );
 };
 
-export default Rankings;
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { VipBadge } from "@/components/gamification/VipBadge";
-import { VipLevel } from "@/lib/gamification";
-import { Link } from "react-router-dom";
-import {
-  Trophy,
-  TrendingUp,
-  TrendingDown,
-  Crown,
-  Medal,
-  Award,
-  CheckCircle,
-  Minus,
-} from "lucide-react";
-
-const globalRankings = [
+export default Rankings;const globalRankings = [
   { rank: 1, name: "Carlos Silva", username: "carlosmaster", points: 15420, winRate: 78, earnings: 45230, verified: true, trend: 5, avatar: "CS", vipLevel: "elite" as VipLevel },
   { rank: 2, name: "Maria Santos", username: "mariachess", points: 14890, winRate: 75, earnings: 38150, verified: true, trend: 2, avatar: "MS", vipLevel: "diamond" as VipLevel },
   { rank: 3, name: "João Pereira", username: "joaopro", points: 14320, winRate: 72, earnings: 32890, verified: false, trend: -1, avatar: "JP", vipLevel: "gold" as VipLevel },

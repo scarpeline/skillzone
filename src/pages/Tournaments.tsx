@@ -204,21 +204,7 @@ const Tournaments = () => {
   );
 };
 
-export default Tournaments;
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Trophy, Users, Clock, Flame, Search, Filter, Calendar, DollarSign } from "lucide-react";
-import { useState } from "react";
-
-const tournaments = [
+export default Tournaments;const tournaments = [
   {
     id: 1,
     name: "Campeonato Brasileiro de Xadrez",
