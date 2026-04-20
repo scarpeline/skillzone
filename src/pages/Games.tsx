@@ -72,7 +72,7 @@ const games = [
     rating: 4.7,
   },
   {
-    id: "tigrinho",
+    id: "slot-tiger",
     name: "Tigrinho",
     description: "O famoso slot do Tigrinho! Gire os rolos e combine símbolos para ganhar multiplicadores explosivos.",
     players: "28,900",
